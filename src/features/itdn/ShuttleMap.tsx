@@ -1,0 +1,42 @@
+"use client";
+import React, { useMemo } from 'react';
+import { Box } from '@mui/material';
+
+export interface MapPoint { id: string; lat: number; lng: number; type: 'stop' | 'vehicle'; label?: string; color?: string; }
+
+function project(points: MapPoint[]) {
+  const lats = points.map(p => p.lat);
+  const lngs = points.map(p => p.lng);
+  const minLat = Math.min(...lats), maxLat = Math.max(...lats);
+  const minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
+  const pad = 0.02; // add 2% padding
+  const dLat = (maxLat - minLat) || 0.001; // avoid 0
+  const dLng = (maxLng - minLng) || 0.001;
+  return { minLat: minLat - dLat * pad, maxLat: maxLat + dLat * pad, minLng: minLng - dLng * pad, maxLng: maxLng + dLng * pad };
+}
+
+export const ShuttleMap: React.FC<{ points: MapPoint[]; height?: number }> = ({ points, height = 260 }) => {
+  const bounds = useMemo(() => points.length ? project(points) : null, [points]);
+  return (
+    <Box position="relative" sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, overflow: 'hidden', width: '100%', height }}>
+      <Box position="absolute" inset={0}>
+        {bounds && points.map(p => {
+          const x = (p.lng - bounds.minLng) / (bounds.maxLng - bounds.minLng);
+          const y = 1 - (p.lat - bounds.minLat) / (bounds.maxLat - bounds.minLat);
+          const left = `${Math.min(100, Math.max(0, x * 100))}%`;
+          const top = `${Math.min(100, Math.max(0, y * 100))}%`;
+          const size = p.type === 'vehicle' ? 12 : 8;
+          const bg = p.type === 'vehicle' ? (p.color || '#1976d2') : (p.color || '#9e9e9e');
+          return (
+            <Box key={p.id} position="absolute" left={left} top={top} sx={{ transform: 'translate(-50%, -50%)' }}>
+              <Box sx={{ width: size, height: size, borderRadius: '50%', bgcolor: bg, border: '2px solid #fff', boxShadow: 2 }} />
+              {p.label && <Box sx={{ position: 'absolute', top: size + 4, left: '50%', transform: 'translateX(-50%)', fontSize: 11, bgcolor: 'rgba(255,255,255,0.9)', px: 0.5, borderRadius: 1 }}>{p.label}</Box>}
+            </Box>
+          );
+        })}
+      </Box>
+    </Box>
+  );
+};
+
+export default ShuttleMap;
