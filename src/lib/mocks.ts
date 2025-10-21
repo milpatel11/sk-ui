@@ -59,7 +59,13 @@ const applications: Application[] = [
         application_id: 'itdn',
         name: 'Integrated Transportation & Delivery Network (ITDN)',
         description: 'Unified ride-hailing, courier, food & grocery delivery logistics platform',
-        host: '/itdn'
+        host: '/itdn/shuttle'
+    },
+    {
+        application_id: 'hr',
+        name: 'Human Resources',
+        description: 'Attendance, shifts, vacations, availability',
+        host: '/human-resources'
     },
 ];
 
@@ -602,6 +608,17 @@ const estimateEtaMinutes = (fromLat: number, fromLng: number, toLat: number, toL
   return Math.max(1, Math.round(hours * 60));
 };
 
+// --- HR (Human Resources) mock domain ---
+interface HrAttendance { id: string; userId: string; clockInAt: string; clockOutAt?: string | null; durationMinutes?: number; notes?: string; createdAt?: string; updatedAt?: string; }
+interface HrShift { id: string; userId: string; start: string; end: string; role?: string; location?: string; status?: 'SCHEDULED'|'COMPLETED'|'MISSED'|'CANCELLED'; createdAt?: string; updatedAt?: string; }
+interface HrVacation { id: string; userId: string; startDate: string; endDate: string; reason?: string; status: 'PENDING'|'APPROVED'|'REJECTED'|'CANCELLED'; createdAt?: string; updatedAt?: string; }
+interface HrAvailability { id: string; userId: string; start: string; end: string; notes?: string; createdAt?: string; updatedAt?: string; }
+
+const hrAttendance: HrAttendance[] = [];
+const hrShifts: HrShift[] = [];
+const hrVacations: HrVacation[] = [];
+const hrAvailability: HrAvailability[] = [];
+
 // --- API Mock Handlers ---
 export const mockGet = async (url: string) => {
     // Simulate latency
@@ -743,6 +760,31 @@ export const mockGet = async (url: string) => {
         if (!booking) return { data: null };
         const vehicle = booking.assignedVehicleId ? shuttleVehicles.find(v => v.id === booking.assignedVehicleId) : null;
         return { data: { booking, vehicle } };
+    }
+    // HR GET endpoints
+    if (url.startsWith('/hr/attendance')) {
+        let userId: string | null = null;
+        try { userId = new URLSearchParams(url.split('?')[1]).get('userId'); } catch {}
+        const data = hrAttendance.filter(r => !userId || r.userId === userId).sort((a,b)=> (b.clockInAt||'').localeCompare(a.clockInAt||''));
+        return { data };
+    }
+    if (url.startsWith('/hr/shifts')) {
+        let userId: string | null = null;
+        try { userId = new URLSearchParams(url.split('?')[1]).get('userId'); } catch {}
+        const data = hrShifts.filter(r => !userId || r.userId === userId).sort((a,b)=> (a.start||'').localeCompare(b.start||''));
+        return { data };
+    }
+    if (url.startsWith('/hr/vacations')) {
+        let userId: string | null = null;
+        try { userId = new URLSearchParams(url.split('?')[1]).get('userId'); } catch {}
+        const data = hrVacations.filter(r => !userId || r.userId === userId).sort((a,b)=> (b.createdAt||'').localeCompare(a.createdAt||''));
+        return { data };
+    }
+    if (url.startsWith('/hr/availability')) {
+        let userId: string | null = null;
+        try { userId = new URLSearchParams(url.split('?')[1]).get('userId'); } catch {}
+        const data = hrAvailability.filter(r => !userId || r.userId === userId).sort((a,b)=> (a.start||'').localeCompare(b.start||''));
+        return { data };
     }
     return {data: null};
 };
@@ -1275,6 +1317,50 @@ export const mockPost = async (url: string, body: any) => {
         });
         return { data: v };
     }
+    // HR POST endpoints
+    if (url.startsWith('/hr/attendance/clock-in')) {
+        const { userId, notes } = body || {};
+        if (!userId) throw { status: 400, message: 'userId required' };
+        const open = hrAttendance.find(r => r.userId === userId && !r.clockOutAt);
+        if (open) throw { status: 400, message: 'Already clocked in' };
+        const now = new Date().toISOString();
+        const rec: HrAttendance = { id: 'hra-' + (hrAttendance.length + 1), userId, clockInAt: now, clockOutAt: null, notes, createdAt: now, updatedAt: now };
+        hrAttendance.push(rec);
+        return { data: rec };
+    }
+    if (url.startsWith('/hr/attendance/clock-out')) {
+        const { userId } = body || {};
+        if (!userId) throw { status: 400, message: 'userId required' };
+        const open = [...hrAttendance].reverse().find(r => r.userId === userId && !r.clockOutAt);
+        if (!open) throw { status: 400, message: 'No open attendance' };
+        const now = new Date().toISOString();
+        open.clockOutAt = now;
+        const durMin = Math.max(1, Math.round((new Date(now).getTime() - new Date(open.clockInAt).getTime()) / 60000));
+        open.durationMinutes = durMin;
+        open.updatedAt = now;
+        return { data: open };
+    }
+    if (url.startsWith('/hr/shifts')) {
+        const { userId, start, end, role, location } = body || {};
+        if (!userId || !start || !end) throw { status: 400, message: 'userId, start, end required' };
+        const rec: HrShift = { id: 'hrs-' + (hrShifts.length + 1), userId, start, end, role, location, status: 'SCHEDULED', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+        hrShifts.push(rec);
+        return { data: rec };
+    }
+    if (url.startsWith('/hr/vacations')) {
+        const { userId, startDate, endDate, reason } = body || {};
+        if (!userId || !startDate || !endDate) throw { status: 400, message: 'userId, startDate, endDate required' };
+        const rec: HrVacation = { id: 'hrv-' + (hrVacations.length + 1), userId, startDate, endDate, reason, status: 'PENDING', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+        hrVacations.push(rec);
+        return { data: rec };
+    }
+    if (url.startsWith('/hr/availability')) {
+        const { userId, start, end, notes } = body || {};
+        if (!userId || !start || !end) throw { status: 400, message: 'userId, start, end required' };
+        const rec: HrAvailability = { id: 'hrav-' + (hrAvailability.length + 1), userId, start, end, notes, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+        hrAvailability.push(rec);
+        return { data: rec };
+    }
     return {data: body};
 };
 
@@ -1304,6 +1390,21 @@ export const mockPatch = async (url: string, body: any) => {
         const before = shuttleBookings[idx];
         shuttleBookings[idx] = { ...before, ...body, updatedAt: new Date().toISOString() };
         return { data: shuttleBookings[idx] };
+    }
+    // HR PATCH endpoints
+    if (url.startsWith('/hr/shifts/')) {
+        const id = url.split('/').pop();
+        const idx = hrShifts.findIndex(s => s.id === id);
+        if (idx === -1) throw { status: 404, message: 'Not found' };
+        hrShifts[idx] = { ...hrShifts[idx], ...body, updatedAt: new Date().toISOString() };
+        return { data: hrShifts[idx] };
+    }
+    if (url.startsWith('/hr/vacations/')) {
+        const id = url.split('/').pop();
+        const idx = hrVacations.findIndex(v => v.id === id);
+        if (idx === -1) throw { status: 404, message: 'Not found' };
+        hrVacations[idx] = { ...hrVacations[idx], ...body, updatedAt: new Date().toISOString() };
+        return { data: hrVacations[idx] };
     }
     return {data: body};
 };

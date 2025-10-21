@@ -1,7 +1,6 @@
 "use client";
 import React, { useState } from 'react';
 import { TextField, Button, Stack, Typography, Checkbox, FormControlLabel, Paper, Divider, Box } from '@mui/material';
-import { apiClient } from '@/lib/apiClient';
 import { useRouter } from 'next/navigation';
 import { useTenants } from './TenantContext';
 
@@ -35,9 +34,21 @@ export const TenantRegistrationForm: React.FC = () => {
         shipping_postal_code: form.billing_postal_code,
         shipping_country: form.billing_country,
       } : form;
-      const resp = await apiClient.post('/tenants', payload);
-      addTenant(resp.data);
-      router.push(`/tenant/${resp.data.tenant_id}`);
+      // Call Next.js API route to register tenant
+      const res = await fetch('/api/tenants', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        let msg = `Failed (${res.status})`;
+        try { const errJson = await res.json(); msg = errJson?.message || msg; } catch {}
+        throw new Error(msg);
+      }
+      const data = await res.json();
+      addTenant(data);
+      router.push(`/tenant/${data.tenant_id}`);
     } catch (err: any) {
       setError(err.message || 'Tenant registration failed');
     } finally { setLoading(false); }

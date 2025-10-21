@@ -450,3 +450,48 @@ export interface TaxTransaction {
   totalCents: number;
   createdAt: string;
 }
+
+// --- Human Resources (HR) ---
+export interface HrAttendanceRecord {
+  id: string;
+  userId: string;
+  clockInAt: string; // ISO datetime
+  clockOutAt?: string | null; // ISO datetime
+  durationMinutes?: number; // computed total if closed
+  notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface HrShift {
+  id: string;
+  userId: string;
+  start: string; // ISO datetime
+  end: string;   // ISO datetime
+  role?: string;
+  location?: string;
+  status?: 'SCHEDULED' | 'COMPLETED' | 'MISSED' | 'CANCELLED';
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface HrVacationRequest {
+  id: string;
+  userId: string;
+  startDate: string; // ISO date
+  endDate: string;   // ISO date
+  reason?: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface HrAvailabilitySlot {
+  id: string;
+  userId: string;
+  start: string; // ISO datetime
+  end: string;   // ISO datetime
+  notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
