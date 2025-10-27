@@ -1,0 +1,315 @@
+%% TMS Domain Models - Mermaid Class Diagram
+%% Generated on 2025-10-22
+
+classDiagram
+    direction LR
+
+    class Task {
+        +byte[16] id
+        +UUID taskId
+        +String typeKey
+        +String title
+        +String description
+        +String status
+        +String priority
+        +Instant dueDate
+        +String metadata (JSON)
+        +UUID createdBy
+        +Instant createdAt
+        +UUID updatedBy
+        +Instant updatedAt
+        +UUID deletedBy
+        +Instant deletedAt
+        +Long version
+    }
+
+    class SlaPolicy {
+        +byte[16] id
+        +UUID slaPolicyId
+        +String name
+        +String description
+        +int durationSeconds
+        +String breachAction
+        +Instant createdAt
+        +Instant updatedAt
+        +Instant deletedAt
+        +Long version
+    }
+
+    class SlaTimer {
+        +byte[16] id
+        +UUID timerId
+        +Instant startedAt
+        +Instant dueAt
+        +Boolean breached
+        +Instant breachedAt
+        +UUID createdBy
+        +Instant createdAt
+        +UUID updatedBy
+        +Instant updatedAt
+        +UUID deletedBy
+        +Instant deletedAt
+        +Long version
+    }
+
+    class Workflow {
+        +byte[16] id
+        +UUID workflowId
+        +String name
+        +String description
+        +String definition (JSON)
+        +UUID createdBy
+        +Instant createdAt
+        +UUID updatedBy
+        +Instant updatedAt
+        +UUID deletedBy
+        +Instant deletedAt
+        +Long version
+    }
+
+    class WorkflowInstance {
+        +byte[16] id
+        +UUID workflowInstanceId
+        +Instant startedAt
+        +UUID createdBy
+        +Instant createdAt
+        +UUID updatedBy
+        +Instant updatedAt
+        +UUID deletedBy
+        +Instant deletedAt
+        +Long version
+    }
+
+    class WorkflowState {
+        +byte[16] id
+        +UUID stateId
+        +String key
+        +String name
+        +String description
+        +Instant createdAt
+        +Instant updatedAt
+        +UUID deletedBy
+        +Instant deletedAt
+    }
+
+    class WorkflowTransition {
+        +byte[16] id
+        +UUID transitionId
+        +String name
+        +String conditions (JSON)
+        +String actions (JSON)
+        +String metadata (JSON)
+        +UUID createdBy
+        +Instant createdAt
+        +UUID updatedBy
+        +Instant updatedAt
+        +UUID deletedBy
+        +Instant deletedAt
+        +Long version
+    }
+
+    class Approval {
+        +byte[16] id
+        +UUID approvalId
+        +int sequence
+        +String status
+        +Instant requestedAt
+        +Instant respondedAt
+        +String responseComment
+        +String metadata (JSON)
+        +Long version
+    }
+
+%% IAM and shared core models (with key fields)
+    class Application {
+        +byte[16] id
+        +UUID applicationId
+        +String applicationName
+        +String applicationDescription
+        +UUID createdBy
+        +Instant createdAt
+        +UUID updatedBy
+        +Instant updatedAt
+        +UUID deletedBy
+        +Instant deletedAt
+        +Long version
+    }
+
+    class Tenant {
+        +byte[16] id
+        +UUID tenantId
+        +String tenantName
+        +String tenantDescription
+        +UUID createdBy
+        +Instant createdAt
+        +UUID updatedBy
+        +Instant updatedAt
+        +UUID deletedBy
+        +Instant deletedAt
+        +Long version
+    }
+
+    class GlobalUser {
+        +byte[16] id
+        +UUID userId
+        +String firstName
+        +String lastName
+        +String email
+        +String username
+        +String password
+        +UUID tenantId
+        +UUID createdBy
+        +Instant createdAt
+        +UUID updatedBy
+        +Instant updatedAt
+        +UUID deletedBy
+        +Instant deletedAt
+        +Long version
+    }
+
+    class GlobalGroup {
+        +byte[16] id
+        +UUID groupId
+        +String groupName
+        +String groupDescription
+        +UUID tenantId
+        +UUID createdBy
+        +Instant createdAt
+        +UUID updatedBy
+        +Instant updatedAt
+        +UUID deletedBy
+        +Instant deletedAt
+        +Long version
+    }
+
+    class ApplicationUser {
+        +byte[16] id
+        +UUID appUserId
+        +Boolean enabled
+        +Instant lastLogin
+        +UUID createdBy
+        +Instant createdAt
+        +UUID updatedBy
+        +Instant updatedAt
+        +UUID deletedBy
+        +Instant deletedAt
+        +Long version
+    }
+
+    class UserGroup {
+        +byte[16] id
+        +UUID userGroupId
+        +UUID userId
+        +UUID groupId
+        +UUID createdBy
+        +Instant createdAt
+        +UUID updatedBy
+        +Instant updatedAt
+        +UUID deletedBy
+        +Instant deletedAt
+        +Long version
+    }
+
+    class GroupRole {
+        +byte[16] id
+        +UUID groupRoleId
+        +UUID groupId
+        +UUID roleId
+        +UUID createdBy
+        +Instant createdAt
+        +UUID updatedBy
+        +Instant updatedAt
+        +UUID deletedBy
+        +Instant deletedAt
+        +Long version
+    }
+
+    class Role {
+        +byte[16] id
+        +UUID roleId
+        +String name
+        +String scope
+        +UUID createdBy
+        +Instant createdAt
+        +UUID updatedBy
+        +Instant updatedAt
+        +UUID deletedBy
+        +Instant deletedAt
+        +Long version
+    }
+
+    class Permission {
+        +byte[16] id
+        +UUID permissionId
+        +String name
+        +String description
+        +UUID createdBy
+        +Instant createdAt
+        +UUID updatedBy
+        +Instant updatedAt
+        +UUID deletedBy
+        +Instant deletedAt
+        +Long version
+    }
+
+    class RolePermission {
+        +byte[16] id
+        +UUID rolePermissionId
+        +UUID roleId
+        +UUID permissionId
+        +UUID createdBy
+        +Instant createdAt
+        +UUID updatedBy
+        +Instant updatedAt
+        +UUID deletedBy
+        +Instant deletedAt
+        +Long version
+    }
+
+%% Relationships
+    Task "many" --> "1" Application : application
+    Task "many" --> "1" GlobalUser : reporter
+    Task "many" --> "1" GlobalUser : assignee
+    Task "many" --> "1" SlaPolicy : slaPolicy
+    Task "1" --> "1" WorkflowInstance : workflowInstance
+
+    SlaPolicy "many" --> "1" Application : application
+    SlaPolicy "many" --> "1" GlobalUser : createdBy
+    SlaPolicy "many" --> "1" GlobalUser : updatedBy
+    SlaPolicy "many" --> "1" GlobalUser : deletedBy
+
+    SlaTimer "many" --> "1" Task : task
+    SlaTimer "many" --> "1" SlaPolicy : slaPolicy
+
+    Workflow "many" --> "1" Application : application
+    WorkflowInstance "many" --> "1" Workflow : workflow
+    WorkflowInstance "1" --> "1" Task : task
+    WorkflowInstance "many" --> "1" WorkflowState : currentState
+
+    WorkflowState "many" --> "1" Workflow : workflow
+    WorkflowState "many" --> "1" GlobalUser : createdBy
+    WorkflowState "many" --> "1" GlobalUser : updatedBy
+
+    WorkflowTransition "many" --> "1" Workflow : workflow
+    WorkflowTransition "many" --> "1" WorkflowState : fromState
+    WorkflowTransition "many" --> "1" WorkflowState : toState
+
+    Approval "many" --> "1" Task : task
+    Approval "many" --> "1" GlobalUser : approverGlobalUser
+    Approval "many" --> "1" ApplicationUser : approverApplicationUser
+    Approval "many" --> "1" GlobalGroup : approverGroup
+    Approval "many" --> "1" GlobalUser : requestedBy
+    Approval "many" --> "1" GlobalUser : respondedBy
+
+%% IAM relationships
+    ApplicationUser "many" --> "1" Application : application
+    ApplicationUser "many" --> "1" Tenant : tenantId
+
+    UserGroup "many" --> "1" GlobalUser : userId
+    UserGroup "many" --> "1" GlobalGroup : groupId
+
+    GroupRole "many" --> "1" GlobalGroup : groupId
+    GroupRole "many" --> "1" Role : roleId
+
+    RolePermission "many" --> "1" Role : roleId
+    RolePermission "many" --> "1" Permission : permissionId

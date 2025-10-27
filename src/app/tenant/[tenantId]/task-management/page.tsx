@@ -1,23 +1,23 @@
 "use client";
-import React, { useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import {useEffect} from "react";
+import {useParams, useRouter} from "next/navigation";
+import {Box, CircularProgress} from "@mui/material";
 
-const VALID_TABS = ['dashboard','board','workflows','sla','instances'];
-const STORAGE_KEY_PREFIX = 'tms:lastTab:';
-
-export default function TaskManagementRootRedirect(){
+export default function TaskManagementIndexRedirect() {
   const router = useRouter();
   const params = useParams();
   const tenantId = params?.tenantId as string | undefined;
-
-  useEffect(()=>{
-    if (!tenantId) return;
-    const storageKey = STORAGE_KEY_PREFIX + tenantId;
-    let stored: string | null = null;
-    if (typeof window !== 'undefined') stored = localStorage.getItem(storageKey);
-    const fallback = 'dashboard';
-    const tab = stored && VALID_TABS.includes(stored) ? stored : fallback;
-    router.replace(`/tenant/${tenantId}/task-management/${tab}`);
-  }, [router, tenantId]);
-  return null;
+  useEffect(() => {
+    if (tenantId) router.replace(`/tenant/${tenantId}/task-management/tasks`);
+  }, [tenantId, router]);
+  return (
+    <Box
+      display="flex"
+      alignItems="center"
+      justifyContent="center"
+      minHeight={200}
+    >
+      <CircularProgress size={24} />
+    </Box>
+  );
 }

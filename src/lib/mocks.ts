@@ -39,9 +39,19 @@ const tenants: Tenant[] = [
 ];
 
 const applications: Application[] = [
-    {application_id: 'app-1', name: 'User Portal', description: 'End user portal', host: '/user-management/notifications'},
+    {
+        application_id: 'app-1',
+        name: 'User Portal',
+        description: 'End user portal',
+        host: '/user-management/notifications'
+    },
     {application_id: 'admin', name: 'Admin Console', description: 'Administration console', host: '/admin'},
-    {application_id: 'tms', name: 'Task Management', description: 'Track and manage tasks', host: '/task-management/board'},
+    {
+        application_id: 'tms',
+        name: 'Task Management',
+        description: 'Track and manage tasks',
+        host: '/task-management'
+    },
     {
         application_id: 'inventory',
         name: 'Inventory Management',
@@ -67,6 +77,20 @@ const applications: Application[] = [
         description: 'Attendance, shifts, vacations, availability',
         host: '/human-resources'
     },
+    // Added applications
+    {
+        application_id: 'reporting',
+        name: 'Reporting Engine',
+        description: 'Dashboards and reporting',
+        host: '/reporting'
+    },
+    {
+        application_id: 'crm',
+        name: 'CRM',
+        description: 'Customer Relationship Management',
+        host: '/crm'
+    },
+    // Removed duplicate Tenant Management app (Admin covers these capabilities)
 ];
 
 const permissions: Permission[] = [
@@ -284,43 +308,50 @@ const tmsWorkflows: MockWorkflow[] = [
     }
 ];
 
+// Workflow states & transitions
+interface MockWorkflowState { id: string; workflowId: string; key: string; name: string; metadata?: any; createdAt?: string; updatedAt?: string }
+interface MockWorkflowTransition { id: string; workflowId: string; name: string; fromStateId: string; toStateId: string; conditions?: any; actions?: any; metadata?: any; createdAt?: string; updatedAt?: string }
+
+const tmsWorkflowStates: MockWorkflowState[] = [
+    { id: 'wfs-1', workflowId: 'wf-1', key: 'open', name: 'Open', createdAt: new Date().toISOString() },
+    { id: 'wfs-2', workflowId: 'wf-1', key: 'in_progress', name: 'In Progress', createdAt: new Date().toISOString() },
+    { id: 'wfs-3', workflowId: 'wf-1', key: 'done', name: 'Done', createdAt: new Date().toISOString() },
+    { id: 'wfs-4', workflowId: 'wf-2', key: 'open', name: 'Open', createdAt: new Date().toISOString() },
+    { id: 'wfs-5', workflowId: 'wf-2', key: 'approval', name: 'Approval', createdAt: new Date().toISOString() },
+    { id: 'wfs-6', workflowId: 'wf-2', key: 'fulfilled', name: 'Fulfilled', createdAt: new Date().toISOString() }
+];
+
+const tmsWorkflowTransitions: MockWorkflowTransition[] = [
+    { id: 'wft-1', workflowId: 'wf-1', name: 'Start work', fromStateId: 'wfs-1', toStateId: 'wfs-2', createdAt: new Date().toISOString() },
+    { id: 'wft-2', workflowId: 'wf-1', name: 'Complete', fromStateId: 'wfs-2', toStateId: 'wfs-3', createdAt: new Date().toISOString() },
+    { id: 'wft-3', workflowId: 'wf-2', name: 'Submit for approval', fromStateId: 'wfs-4', toStateId: 'wfs-5', metadata: { requiresApproval: true }, createdAt: new Date().toISOString() },
+    { id: 'wft-4', workflowId: 'wf-2', name: 'Fulfill', fromStateId: 'wfs-5', toStateId: 'wfs-6', createdAt: new Date().toISOString() }
+];
+
+// Add missing Workflow Instances mock type and data
 interface MockWorkflowInstance {
     id: string;
     workflowId: string;
-    name?: string;
-    currentStateKey?: string;
+    currentStateId: string;
+    taskId?: string;
+    metadata?: any;
     createdAt?: string;
+    updatedAt?: string;
 }
 
 const tmsWorkflowInstances: MockWorkflowInstance[] = [
-    {
-        id: 'wfi-1',
-        workflowId: 'wf-1',
-        name: 'Issue Instance 1',
-        currentStateKey: 'open',
-        createdAt: new Date().toISOString()
-    },
-    {
-        id: 'wfi-2',
-        workflowId: 'wf-1',
-        name: 'Issue Instance 2',
-        currentStateKey: 'in_progress',
-        createdAt: new Date().toISOString()
-    },
-    {
-        id: 'wfi-3',
-        workflowId: 'wf-2',
-        name: 'Request Instance 1',
-        currentStateKey: 'approval',
-        createdAt: new Date().toISOString()
-    }
+    { id: 'wfi-1', workflowId: 'wf-1', currentStateId: 'wfs-1', createdAt: new Date().toISOString() },
+    { id: 'wfi-2', workflowId: 'wf-1', currentStateId: 'wfs-2', createdAt: new Date().toISOString() },
+    { id: 'wfi-3', workflowId: 'wf-2', currentStateId: 'wfs-4', createdAt: new Date().toISOString() },
 ];
 
+// SLA Policies and Timers (restored)
 interface MockSlaPolicy {
     slaPolicyId: string;
     name: string;
     description?: string;
     durationSeconds: number;
+    targetHours?: number;
     createdAt?: string;
 }
 
@@ -330,6 +361,7 @@ const tmsSlaPolicies: MockSlaPolicy[] = [
         name: 'Standard 48h',
         description: 'Resolution within 48 hours',
         durationSeconds: 172800,
+        targetHours: 48,
         createdAt: new Date().toISOString()
     },
     {
@@ -337,6 +369,7 @@ const tmsSlaPolicies: MockSlaPolicy[] = [
         name: 'Priority 24h',
         description: 'High priority tasks 24h',
         durationSeconds: 86400,
+        targetHours: 24,
         createdAt: new Date().toISOString()
     }
 ];
@@ -370,254 +403,44 @@ const tmsSlaTimers: MockSlaTimer[] = [
     }
 ];
 
+// Add Approvals mock domain
 interface MockApproval {
     approvalId: string;
     taskId: string;
-    status: 'pending' | 'approved' | 'rejected';
-    requestedAt?: string;
+    sequence: number;
+    approverGlobalUserId?: string;
+    approverApplicationUserId?: string;
     approverGroupId?: string;
+    status: 'pending' | 'approved' | 'rejected';
+    requestedBy?: string;
+    requestedAt?: string;
+    respondedAt?: string;
+    responseComment?: string;
+    metadata?: any;
 }
 
 const tmsApprovals: MockApproval[] = [
     {
-        approvalId: 'appr-1',
-        taskId: 'task-3',
+        approvalId: 'ap-1',
+        taskId: 'task-1',
+        sequence: 1,
+        approverGlobalUserId: 'user-2',
         status: 'pending',
+        requestedBy: 'user-1',
         requestedAt: new Date().toISOString(),
-        approverGroupId: 'group-1'
-    }
-];
-
-// --- Inventory Management mock domain ---
-const inventoryCategories: InventoryCategory[] = [
-    {id: 'cat-1', name: 'Hardware', description: 'Physical devices', createdAt: new Date().toISOString()},
-    {id: 'cat-2', name: 'Software', description: 'Licenses and subscriptions', createdAt: new Date().toISOString()}
-];
-const inventoryLocations: InventoryLocation[] = [
-    {id: 'loc-1', name: 'Warehouse A', description: 'Primary storage', createdAt: new Date().toISOString()},
-    {id: 'loc-2', name: 'Warehouse B', description: 'Overflow', createdAt: new Date().toISOString()}
-];
-const inventoryItems: InventoryItem[] = [
-    {
-        id: 'inv-1',
-        sku: 'HW-001',
-        name: 'Router X',
-        categoryId: 'cat-1',
-        locationId: 'loc-1',
-        quantity: 25,
-        reorderLevel: 5,
-        description: 'Core router',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
     },
     {
-        id: 'inv-2',
-        sku: 'SW-010',
-        name: 'Antivirus License',
-        categoryId: 'cat-2',
-        locationId: 'loc-2',
-        quantity: 120,
-        reorderLevel: 20,
-        description: '1-year subscription',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        approvalId: 'ap-2',
+        taskId: 'task-2',
+        sequence: 1,
+        approverGroupId: 'group-1',
+        status: 'approved',
+        requestedBy: 'user-3',
+        requestedAt: new Date(Date.now() - 3600_000).toISOString(),
+        respondedAt: new Date().toISOString(),
+        responseComment: 'Looks good',
     }
 ];
-const inventoryMovements: InventoryMovement[] = [];
-
-// --- POS mock domain ---
-interface MockPosProduct {
-    id: string;
-    sku: string;
-    name: string;
-    priceCents: number;
-    active?: boolean;
-    createdAt?: string;
-    updatedAt?: string;
-}
-
-interface MockPosCustomer {
-    id: string;
-    name: string;
-    email?: string;
-    phone?: string;
-    createdAt?: string;
-    updatedAt?: string;
-}
-
-interface MockPosSaleItem {
-    productId: string;
-    quantity: number;
-    unitPriceCents: number;
-    lineTotalCents: number;
-}
-
-interface MockPosSale {
-    id: string;
-    customerId?: string;
-    items: MockPosSaleItem[];
-    subtotalCents: number;
-    taxCents: number;
-    totalCents: number;
-    createdAt: string;
-}
-
-const posProducts: MockPosProduct[] = [
-    {
-        id: 'pp-1',
-        sku: 'P-100',
-        name: 'USB-C Cable',
-        priceCents: 1299,
-        active: true,
-        createdAt: new Date().toISOString()
-    },
-    {
-        id: 'pp-2',
-        sku: 'P-200',
-        name: 'Wireless Mouse',
-        priceCents: 2599,
-        active: true,
-        createdAt: new Date().toISOString()
-    }
-];
-const posCustomers: MockPosCustomer[] = [
-    {id: 'pc-1', name: 'Alice Smith', email: 'alice@example.com', createdAt: new Date().toISOString()},
-    {id: 'pc-2', name: 'Bob Jones', email: 'bob@example.com', createdAt: new Date().toISOString()}
-];
-const posSales: MockPosSale[] = [];
-
-// --- Tax Management mock domain ---
-interface MockTaxJurisdiction {
-    id: string;
-    code: string;
-    name: string;
-    createdAt?: string;
-    updatedAt?: string;
-}
-
-interface MockTaxCategory {
-    id: string;
-    name: string;
-    description?: string;
-    defaultRatePercent: number;
-    createdAt?: string;
-    updatedAt?: string;
-}
-
-interface MockTaxRule {
-    id: string;
-    name: string;
-    jurisdictionId: string;
-    categoryId?: string;
-    ratePercent: number;
-    active?: boolean;
-    createdAt?: string;
-    updatedAt?: string;
-}
-
-interface MockTaxTransactionLine {
-    categoryId?: string;
-    ruleId?: string;
-    amountCents: number;
-    appliedRatePercent: number;
-    taxCents: number;
-}
-
-interface MockTaxTransaction {
-    id: string;
-    jurisdictionId: string;
-    lines: MockTaxTransactionLine[];
-    subtotalCents: number;
-    taxCents: number;
-    totalCents: number;
-    createdAt: string;
-}
-
-const taxJurisdictions: MockTaxJurisdiction[] = [
-    {id: 'txj-1', code: 'US-CA', name: 'California', createdAt: new Date().toISOString()},
-    {id: 'txj-2', code: 'US-NY', name: 'New York', createdAt: new Date().toISOString()}
-];
-const taxCategories: MockTaxCategory[] = [
-    {id: 'txc-1', name: 'General Goods', defaultRatePercent: 7.25, createdAt: new Date().toISOString()},
-    {id: 'txc-2', name: 'Food', defaultRatePercent: 2.00, createdAt: new Date().toISOString()}
-];
-const taxRules: MockTaxRule[] = [
-    {
-        id: 'txr-1',
-        name: 'CA General',
-        jurisdictionId: 'txj-1',
-        ratePercent: 7.25,
-        active: true,
-        createdAt: new Date().toISOString()
-    },
-    {
-        id: 'txr-2',
-        name: 'CA Food',
-        jurisdictionId: 'txj-1',
-        categoryId: 'txc-2',
-        ratePercent: 1.00,
-        active: true,
-        createdAt: new Date().toISOString()
-    },
-    {
-        id: 'txr-3',
-        name: 'NY General',
-        jurisdictionId: 'txj-2',
-        ratePercent: 8.00,
-        active: true,
-        createdAt: new Date().toISOString()
-    }
-];
-const taxTransactions: MockTaxTransaction[] = [];
-
-// --- ITDN Shuttle mock domain ---
-interface ShuttleStop { id: string; hotelId: string; name: string; lat: number; lng: number; }
-interface ShuttleVehicle { id: string; name: string; hotelId: string; lat: number; lng: number; lastUpdated: string; shiftMiles: number; active?: boolean; }
-interface ShuttleBooking { id: string; hotelId: string; guestName: string; guestEmail: string; pickupStopId: string; dropoffStopId: string; scheduledAt: string; status: 'BOOKED'|'EN_ROUTE'|'PICKED_UP'|'DROPPED_OFF'|'RUNNING_LATE'; assignedVehicleId?: string | null; etaMinutes?: number | null; trackingCode: string; createdAt: string; updatedAt: string; notes?: string; passengers?: number; }
-interface ShuttlePosition { vehicleId: string; lat: number; lng: number; timestamp: string; }
-
-const shuttleStops: ShuttleStop[] = [
-  { id: 'stop-1', hotelId: tenants[0].tenant_id, name: 'Main Lobby', lat: 37.7749, lng: -122.4194 },
-  { id: 'stop-2', hotelId: tenants[0].tenant_id, name: 'Conference Center', lat: 37.7762, lng: -122.4170 },
-  { id: 'stop-3', hotelId: tenants[0].tenant_id, name: 'Airport Terminal A', lat: 37.6152, lng: -122.3899 },
-  { id: 'stop-4', hotelId: tenants[1].tenant_id, name: 'Globex Lobby', lat: 34.0522, lng: -118.2437 }
-];
-
-const shuttleVehicles: ShuttleVehicle[] = [
-  { id: 'veh-1', name: 'Shuttle 1', hotelId: tenants[0].tenant_id, lat: 37.7720, lng: -122.4210, lastUpdated: new Date().toISOString(), shiftMiles: 0, active: true },
-  { id: 'veh-2', name: 'Shuttle 2', hotelId: tenants[0].tenant_id, lat: 37.7800, lng: -122.4150, lastUpdated: new Date().toISOString(), shiftMiles: 0, active: true }
-];
-
-const shuttleBookings: ShuttleBooking[] = [];
-const shuttlePositions: ShuttlePosition[] = [];
-
-const toRad = (v: number) => v * Math.PI / 180;
-const haversineMiles = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-  const R = 3958.8; // miles
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2)**2;
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  return R * c;
-};
-
-const estimateEtaMinutes = (fromLat: number, fromLng: number, toLat: number, toLng: number) => {
-  const miles = haversineMiles(fromLat, fromLng, toLat, toLng);
-  const mph = 25; // average city speed
-  const hours = miles / mph;
-  return Math.max(1, Math.round(hours * 60));
-};
-
-// --- HR (Human Resources) mock domain ---
-interface HrAttendance { id: string; userId: string; clockInAt: string; clockOutAt?: string | null; durationMinutes?: number; notes?: string; createdAt?: string; updatedAt?: string; }
-interface HrShift { id: string; userId: string; start: string; end: string; role?: string; location?: string; status?: 'SCHEDULED'|'COMPLETED'|'MISSED'|'CANCELLED'; createdAt?: string; updatedAt?: string; }
-interface HrVacation { id: string; userId: string; startDate: string; endDate: string; reason?: string; status: 'PENDING'|'APPROVED'|'REJECTED'|'CANCELLED'; createdAt?: string; updatedAt?: string; }
-interface HrAvailability { id: string; userId: string; start: string; end: string; notes?: string; createdAt?: string; updatedAt?: string; }
-
-const hrAttendance: HrAttendance[] = [];
-const hrShifts: HrShift[] = [];
-const hrVacations: HrVacation[] = [];
-const hrAvailability: HrAvailability[] = [];
 
 // --- API Mock Handlers ---
 export const mockGet = async (url: string) => {
@@ -698,12 +521,128 @@ export const mockGet = async (url: string) => {
         const list = tenantInvitations.filter(inv => !tId || inv.tenant_id === tId);
         return {data: list};
     }
-    if (url.startsWith('/tms/tasks')) return {data: tmsTasks};
-    if (url.startsWith('/tms/workflows/instances')) return {data: tmsWorkflowInstances};
-    if (url.startsWith('/tms/workflows')) return {data: tmsWorkflows};
-    if (url.startsWith('/tms/sla-policies')) return {data: tmsSlaPolicies};
-    if (url.startsWith('/tms/sla-timers')) return {data: tmsSlaTimers};
-    if (url.startsWith('/tms/approvals')) return {data: tmsApprovals};
+    // TMS handlers moved below with detailed routing
+    // TMS GET endpoints
+    if (url.startsWith('/tms/tasks/')) {
+        const id = url.split('/')[3];
+        const t = tmsTasks.find(x => x.id === id) || null;
+        return {data: t};
+    }
+    if (url.startsWith('/tms/tasks')) {
+        let list = [...tmsTasks];
+        try {
+            const q = new URLSearchParams(url.split('?')[1] || '');
+            const status = q.get('status');
+            const assigneeId = q.get('assigneeId');
+            const typeKey = q.get('typeKey');
+            const workflowInstanceId = q.get('workflowInstanceId');
+            if (status) list = list.filter(t => (t.status || '') === status);
+            if (assigneeId) list = list.filter(t => (t.assigneeId || '') === assigneeId);
+            if (typeKey) list = list.filter(t => (t.typeKey || '') === typeKey);
+            if (workflowInstanceId) list = list.filter(t => (t.workflowInstanceId || '') === workflowInstanceId);
+        } catch {}
+        // optional sort by updatedAt desc
+        list.sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''))
+        return {data: list};
+    }
+    if (url.startsWith('/tms/approvals')) {
+        let list = [...tmsApprovals];
+        try {
+            const q = new URLSearchParams(url.split('?')[1] || '');
+            const taskId = q.get('taskId');
+            const status = q.get('status');
+            const approverId = q.get('approverId');
+            if (taskId) list = list.filter(a => a.taskId === taskId);
+            if (status) list = list.filter(a => a.status === (status as any));
+            if (approverId) list = list.filter(a => a.approverGlobalUserId === approverId || a.approverApplicationUserId === approverId || a.approverGroupId === approverId);
+        } catch {}
+        // newest first by requestedAt/ respondedAt
+        list.sort((a, b) => (b.respondedAt || b.requestedAt || '').localeCompare(a.respondedAt || a.requestedAt || ''))
+        return {data: list};
+    }
+    if (url.startsWith('/tms/sla-policies/')) {
+        const id = url.split('/')[3];
+        const p = tmsSlaPolicies.find(x => x.slaPolicyId === id) || null;
+        return {data: p};
+    }
+    if (url.startsWith('/tms/sla-policies')) {
+        return {data: tmsSlaPolicies};
+    }
+    if (url.startsWith('/tms/sla-timers')) {
+        let list = [...tmsSlaTimers];
+        try {
+            const q = new URLSearchParams(url.split('?')[1] || '');
+            const taskId = q.get('taskId');
+            const policyId = q.get('policyId') || q.get('slaPolicyId');
+            const breached = q.get('breached');
+            if (taskId) list = list.filter(t => t.taskId === taskId);
+            if (policyId) list = list.filter(t => t.policyId === policyId);
+            if (breached === 'true' || breached === 'false') list = list.filter(t => String(!!t.breached) === breached);
+        } catch {}
+        list.sort((a, b) => (a.dueAt || '').localeCompare(b.dueAt || ''))
+        return {data: list};
+    }
+    if (url.startsWith('/tms/workflows/instances')) {
+        let list = [...tmsWorkflowInstances];
+        try {
+            const q = new URLSearchParams(url.split('?')[1] || '');
+            const workflowId = q.get('workflowId');
+            const taskId = q.get('taskId');
+            if (workflowId) list = list.filter(i => i.workflowId === workflowId);
+            if (taskId) list = list.filter(i => i.taskId === taskId);
+        } catch {}
+        return {data: list};
+    }
+    if (url.startsWith('/tms/workflows/')) {
+        const id = url.split('/')[3];
+        const w = tmsWorkflows.find(x => x.id === id) || null;
+        return {data: w};
+    }
+    if (url.startsWith('/tms/workflows')) {
+        return {data: tmsWorkflows};
+    }
+    if (url.startsWith('/tms/workflow-states')) {
+        let list = [...tmsWorkflowStates];
+        try {
+            const q = new URLSearchParams(url.split('?')[1] || '');
+            const workflowId = q.get('workflowId');
+            if (workflowId) list = list.filter(s => s.workflowId === workflowId);
+        } catch {}
+        return {data: list};
+    }
+    if (url.startsWith('/tms/workflow-transitions')) {
+        let list = [...tmsWorkflowTransitions];
+        try {
+            const q = new URLSearchParams(url.split('?')[1] || '');
+            const workflowId = q.get('workflowId');
+            if (workflowId) list = list.filter(s => s.workflowId === workflowId);
+        } catch {}
+        return {data: list};
+    }
+    // Finance GET endpoints
+    if (url.startsWith('/finance/accounts')) {
+        let list = [...financeAccounts];
+        try {
+            const q = new URLSearchParams(url.split('?')[1] || '');
+            const type = q.get('type');
+            const tenantId = q.get('tenantId');
+            if (type) list = list.filter(a => a.type === (type.toUpperCase() as any));
+            if (tenantId) list = list.filter(a => (a.tenantId || tenants[0].tenant_id) === tenantId);
+        } catch {}
+        list.sort((a,b) => (a.code||'').localeCompare(b.code||'') || a.name.localeCompare(b.name));
+        return {data: list};
+    }
+    if (url.startsWith('/finance/transactions')) {
+        let list = [...financeTransactions];
+        try {
+            const q = new URLSearchParams(url.split('?')[1] || '');
+            const tenantId = q.get('tenantId');
+            if (tenantId) list = list.filter(t => (t.tenantId || tenants[0].tenant_id) === tenantId);
+        } catch {}
+        // sort by date desc then id desc
+        list.sort((a,b) => (b.date || '').localeCompare(a.date || '') || b.id.localeCompare(a.id));
+        return {data: list};
+    }
     // Inventory GET endpoints
     if (url.startsWith('/inventory/items')) return {data: inventoryItems};
     if (url.startsWith('/inventory/categories')) return {data: inventoryCategories};
@@ -719,73 +658,22 @@ export const mockGet = async (url: string) => {
     if (url.startsWith('/tax/rules')) return {data: taxRules};
     if (url.startsWith('/tax/transactions')) return {data: taxTransactions.sort((a, b) => b.createdAt.localeCompare(a.createdAt))};
     if (url.startsWith('/itdn/shuttle/stops')) {
-        let hotelId: string | null = null;
-        try { hotelId = new URLSearchParams(url.split('?')[1]).get('hotelId'); } catch {}
-        const data = shuttleStops.filter(s => !hotelId || s.hotelId === hotelId);
-        return { data };
-    }
-    if (url.startsWith('/itdn/shuttle/vehicles/')) {
-        const id = url.split('/').pop();
-        const v = shuttleVehicles.find(v => v.id === id) || null;
-        return { data: v };
+        const list = shuttleStops.filter(s => s.hotelId === tenants[0].tenant_id);
+        return {data: list};
     }
     if (url.startsWith('/itdn/shuttle/vehicles')) {
-        let hotelId: string | null = null;
-        try { hotelId = new URLSearchParams(url.split('?')[1]).get('hotelId'); } catch {}
-        const data = shuttleVehicles.filter(v => v.active !== false && (!hotelId || v.hotelId === hotelId));
-        return { data };
-    }
-    if (url.startsWith('/itdn/shuttle/bookings/')) {
-        const id = url.split('/').pop();
-        const b = shuttleBookings.find(b => b.id === id) || null;
-        return { data: b };
+        const list = shuttleVehicles.filter(v => v.hotelId === tenants[0].tenant_id);
+        return {data: list};
     }
     if (url.startsWith('/itdn/shuttle/bookings')) {
-        let hotelId: string | null = null;
-        try { hotelId = new URLSearchParams(url.split('?')[1]).get('hotelId'); } catch {}
-        const data = shuttleBookings.filter(b => !hotelId || b.hotelId === hotelId).sort((a,b)=> (b.createdAt||'').localeCompare(a.createdAt||''));
-        return { data };
+        const list = shuttleBookings.filter(b => b.hotelId === tenants[0].tenant_id);
+        return {data: list};
     }
-    if (url.startsWith('/itdn/shuttle/positions')) {
-        let vehicleId: string | null = null;
-        try { vehicleId = new URLSearchParams(url.split('?')[1]).get('vehicleId'); } catch {}
-        const data = shuttlePositions.filter(p => !vehicleId || p.vehicleId === vehicleId).slice(-50);
-        return { data };
-    }
-    if (url.startsWith('/itdn/shuttle/track')) {
-        // public tracking by code
-        let code: string | null = null;
-        try { code = new URLSearchParams(url.split('?')[1]).get('code'); } catch {}
-        const booking = shuttleBookings.find(b => b.trackingCode === code) || null;
-        if (!booking) return { data: null };
-        const vehicle = booking.assignedVehicleId ? shuttleVehicles.find(v => v.id === booking.assignedVehicleId) : null;
-        return { data: { booking, vehicle } };
-    }
-    // HR GET endpoints
-    if (url.startsWith('/hr/attendance')) {
-        let userId: string | null = null;
-        try { userId = new URLSearchParams(url.split('?')[1]).get('userId'); } catch {}
-        const data = hrAttendance.filter(r => !userId || r.userId === userId).sort((a,b)=> (b.clockInAt||'').localeCompare(a.clockInAt||''));
-        return { data };
-    }
-    if (url.startsWith('/hr/shifts')) {
-        let userId: string | null = null;
-        try { userId = new URLSearchParams(url.split('?')[1]).get('userId'); } catch {}
-        const data = hrShifts.filter(r => !userId || r.userId === userId).sort((a,b)=> (a.start||'').localeCompare(b.start||''));
-        return { data };
-    }
-    if (url.startsWith('/hr/vacations')) {
-        let userId: string | null = null;
-        try { userId = new URLSearchParams(url.split('?')[1]).get('userId'); } catch {}
-        const data = hrVacations.filter(r => !userId || r.userId === userId).sort((a,b)=> (b.createdAt||'').localeCompare(a.createdAt||''));
-        return { data };
-    }
-    if (url.startsWith('/hr/availability')) {
-        let userId: string | null = null;
-        try { userId = new URLSearchParams(url.split('?')[1]).get('userId'); } catch {}
-        const data = hrAvailability.filter(r => !userId || r.userId === userId).sort((a,b)=> (a.start||'').localeCompare(b.start||''));
-        return { data };
-    }
+    // HR data (mock)
+    if (url.startsWith('/hr/attendance')) return {data: hrAttendance};
+    if (url.startsWith('/hr/shifts')) return {data: hrShifts};
+    if (url.startsWith('/hr/vacations')) return {data: hrVacations};
+    if (url.startsWith('/hr/availability')) return {data: hrAvailability};
     return {data: null};
 };
 
@@ -1061,50 +949,47 @@ export const mockPost = async (url: string, body: any) => {
         return {data: inv};
     }
     if (url.startsWith('/tms/tasks')) {
-        const nt: MockTask = {
-            id: 'task-' + (tmsTasks.length + 1),
-            typeKey: body.typeKey || 'issue',
-            title: body.title || 'Untitled',
-            status: body.status || 'open',
-            priority: body.priority || 'medium',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-        };
-        tmsTasks.push(nt);
-        return {data: nt};
-    }
-    if (url.startsWith('/tms/sla-policies')) {
-        const np: MockSlaPolicy = {
-            slaPolicyId: 'sla-' + (tmsSlaPolicies.length + 1),
-            name: body.name || 'New SLA',
-            description: body.description || '',
-            durationSeconds: body.durationSeconds || 3600,
-            createdAt: new Date().toISOString()
-        };
-        tmsSlaPolicies.push(np);
-        return {data: np};
-    }
-    if (url.startsWith('/tms/workflows')) {
-        const nw: MockWorkflow = {
-            id: 'wf-' + (tmsWorkflows.length + 1),
-            name: body.name || 'Workflow',
-            description: body.description || '',
-            definition: body.definition || {},
-            createdAt: new Date().toISOString()
-        };
-        tmsWorkflows.push(nw);
-        return {data: nw};
+        const newTask = { id: 'task-' + (tmsTasks.length + 1), ...body, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+        tmsTasks.push(newTask);
+        return {data: newTask};
     }
     if (url.startsWith('/tms/workflows/instances')) {
-        const ni: MockWorkflowInstance = {
-            id: 'wfi-' + (tmsWorkflowInstances.length + 1),
-            workflowId: body.workflowId || tmsWorkflows[0]?.id || 'wf-1',
-            name: body.name || 'Instance',
-            currentStateKey: body.currentStateKey || 'open',
-            createdAt: new Date().toISOString()
+        const inst = { id: 'wfi-' + (tmsWorkflowInstances.length + 1), ...body, createdAt: new Date().toISOString() };
+        tmsWorkflowInstances.push(inst);
+        return {data: inst};
+    }
+    if (url.startsWith('/tms/workflows')) {
+        const wf = { id: 'wf-' + (tmsWorkflows.length + 1), ...body, createdAt: new Date().toISOString() };
+        tmsWorkflows.push(wf);
+        return {data: wf};
+    }
+    if (url.startsWith('/tms/workflow-states')) {
+        const { workflowId, key, name, metadata } = body || {};
+        if (!workflowId || !key || !name) throw {status: 400, message: 'workflowId, key, name required'};
+        const state = { id: 'wfs-' + (tmsWorkflowStates.length + 1), workflowId, key, name, metadata, createdAt: new Date().toISOString() };
+        tmsWorkflowStates.push(state);
+        return {data: state};
+    }
+    if (url.startsWith('/tms/workflow-transitions')) {
+        const { workflowId, name, fromStateId, toStateId, conditions, actions, metadata } = body || {};
+        if (!workflowId || !name || !fromStateId || !toStateId) throw {status: 400, message: 'workflowId, name, fromStateId, toStateId required'};
+        const tr = { id: 'wft-' + (tmsWorkflowTransitions.length + 1), workflowId, name, fromStateId, toStateId, conditions, actions, metadata, createdAt: new Date().toISOString() };
+        tmsWorkflowTransitions.push(tr);
+        return {data: tr};
+    }
+    if (url.startsWith('/tms/sla-policies')) {
+        const name = body?.name || 'Policy ' + (tmsSlaPolicies.length + 1);
+        const targetHours = Number(body?.targetHours) || 24;
+        const rec: MockSlaPolicy = {
+            slaPolicyId: 'sla-' + (tmsSlaPolicies.length + 1),
+            name,
+            description: body?.description,
+            targetHours,
+            durationSeconds: targetHours * 3600,
+            createdAt: new Date().toISOString(),
         };
-        tmsWorkflowInstances.push(ni);
-        return {data: ni};
+        tmsSlaPolicies.push(rec);
+        return {data: rec};
     }
     // Inventory POST
     if (url.startsWith('/inventory/categories')) {
@@ -1161,420 +1046,570 @@ export const mockPost = async (url: string, body: any) => {
         inventoryMovements.push(mv);
         return {data: mv};
     }
-    // POS POST
-    if (url.startsWith('/pos/products')) {
-        const np: MockPosProduct = {
-            id: 'pp-' + (posProducts.length + 1),
-            sku: body.sku || ('POS-' + (posProducts.length + 1)),
-            name: body.name || 'Product',
-            priceCents: Number(body.priceCents) || 0,
-            active: body.active !== false,
+    // Finance POST
+    if (url.startsWith('/finance/accounts')) {
+        const code: string | undefined = body.code;
+        if (code != null && code !== '' && !/^\d+$/.test(String(code))) throw { status: 400, message: 'code must be numeric' };
+        const type = (body.type || '').toUpperCase();
+        if (type !== 'ASSET' && type !== 'LIABILITY') throw { status: 400, message: 'type must be ASSET or LIABILITY' };
+        const currency: string = (body.currency || 'USD').toUpperCase();
+        const balCentsRaw = body.balanceCents != null ? Number(body.balanceCents) : null;
+        const balanceCents = Number.isFinite(balCentsRaw) ? Math.round(Number(balCentsRaw)) : 0;
+        const na: MockFinanceAccount = {
+            id: 'fa-' + (financeAccounts.length + 1),
+            tenantId: body.tenantId || null,
+            type: type as 'ASSET' | 'LIABILITY',
+            name: body.name,
+            code: code || undefined,
+            currency,
+            balanceCents,
+            description: body.description,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
         };
-        posProducts.push(np);
-        return {data: np};
+        financeAccounts.push(na);
+        return {data: na};
     }
-    if (url.startsWith('/pos/customers')) {
-        const nc: MockPosCustomer = {
-            id: 'pc-' + (posCustomers.length + 1),
-            name: body.name || 'Customer',
-            email: body.email || '',
-            phone: body.phone || '',
+    if (url.startsWith('/finance/transactions')) {
+        const { tenantId, date, currency, reference, memo, lines } = body || {};
+        const cur = (currency || 'USD').toUpperCase();
+        if (!date) throw { status: 400, message: 'date required' };
+        if (!/^[A-Z]{3}$/.test(cur)) throw { status: 400, message: 'currency must be 3-letter code' };
+        const arr: any[] = Array.isArray(lines) ? lines : [];
+        if (arr.length < 2) throw { status: 400, message: 'need at least 2 lines' };
+        let debit = 0, credit = 0;
+        for (const l of arr) {
+            const acct = financeAccounts.find(a => a.id === l.accountId);
+            if (!acct) throw { status: 400, message: 'invalid account in lines' };
+            const d = Math.max(0, Math.round(Number(l.debitCents) || 0));
+            const c = Math.max(0, Math.round(Number(l.creditCents) || 0));
+            if (d > 0 && c > 0) throw { status: 400, message: 'line cannot have both debit and credit' };
+            if (d === 0 && c === 0) throw { status: 400, message: 'line must have debit or credit' };
+            debit += d; credit += c;
+        }
+        if (debit !== credit || debit === 0) throw { status: 400, message: 'entry must be balanced and non-zero' };
+        const rec: MockFinanceTransaction = {
+            id: 'ftx-' + (financeTransactions.length + 1),
+            tenantId: tenantId || null,
+            date,
+            currency: cur,
+            reference: reference || '',
+            memo: memo || '',
+            status: 'POSTED',
+            lines: arr.map(l => ({ accountId: l.accountId, description: l.description || '', debitCents: Math.round(Number(l.debitCents) || 0), creditCents: Math.round(Number(l.creditCents) || 0) })),
             createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
+            updatedAt: new Date().toISOString(),
         };
-        posCustomers.push(nc);
-        return {data: nc};
-    }
-    if (url.startsWith('/pos/sales')) {
-        const itemsReq: any[] = Array.isArray(body.items) ? body.items : [];
-        const saleItems: MockPosSaleItem[] = itemsReq.map((r) => {
-             const prod = posProducts.find(p => p.id === r.productId);
-             const unit = prod ? prod.priceCents : Number(r.unitPriceCents) || 0;
-             const qty = Number(r.quantity) || 1;
-             return {productId: r.productId, quantity: qty, unitPriceCents: unit, lineTotalCents: unit * qty};
-         });
-        const subtotal = saleItems.reduce((a, i) => a + i.lineTotalCents, 0);
-        const tax = Math.round(subtotal * 0.07); // 7% mock tax
-        const total = subtotal + tax;
-        const sale: MockPosSale = {
-            id: 'ps-' + (posSales.length + 1),
-            customerId: body.customerId,
-            items: saleItems,
-            subtotalCents: subtotal,
-            taxCents: tax,
-            totalCents: total,
-            createdAt: new Date().toISOString()
-        };
-        posSales.push(sale);
-        return {data: sale};
-    }
-    // Tax POST
-    if (url.startsWith('/tax/jurisdictions')) {
-        const nj: MockTaxJurisdiction = {
-            id: 'txj-' + (taxJurisdictions.length + 1),
-            code: body.code || ('J-' + (taxJurisdictions.length + 1)),
-            name: body.name || 'Jurisdiction',
-            createdAt: new Date().toISOString()
-        };
-        taxJurisdictions.push(nj);
-        return {data: nj};
-    }
-    if (url.startsWith('/tax/categories')) {
-        const nc: MockTaxCategory = {
-            id: 'txc-' + (taxCategories.length + 1),
-            name: body.name || 'Category',
-            description: body.description || '',
-            defaultRatePercent: Number(body.defaultRatePercent) || 0,
-            createdAt: new Date().toISOString()
-        };
-        taxCategories.push(nc);
-        return {data: nc};
-    }
-    if (url.startsWith('/tax/rules')) {
-        const nr: MockTaxRule = {
-            id: 'txr-' + (taxRules.length + 1),
-            name: body.name || 'Rule',
-            jurisdictionId: body.jurisdictionId || taxJurisdictions[0]?.id,
-            categoryId: body.categoryId || undefined,
-            ratePercent: Number(body.ratePercent) || 0,
-            active: body.active !== false,
-            createdAt: new Date().toISOString()
-        };
-        taxRules.push(nr);
-        return {data: nr};
-    }
-    if (url.startsWith('/tax/transactions')) {
-        const jurisdictionId = body.jurisdictionId || taxJurisdictions[0]?.id;
-        const linesReq: any[] = Array.isArray(body.lines) ? body.lines : [];
-        const lines: MockTaxTransactionLine[] = linesReq.map(l => {
-            const amountCents = Number(l.amountCents) || 0;
-            let appliedRate = 0;
-            if (l.ruleId) {
-                const rule = taxRules.find(r => r.id === l.ruleId && r.active !== false);
-                appliedRate = rule ? rule.ratePercent : 0;
-            } else {
-                // find specific category rule else jurisdiction general else category default
-                const catId = l.categoryId;
-                const catRule = taxRules.find(r => r.jurisdictionId === jurisdictionId && r.categoryId === catId && r.active !== false);
-                if (catRule) appliedRate = catRule.ratePercent; else {
-                    const genRule = taxRules.find(r => r.jurisdictionId === jurisdictionId && !r.categoryId && r.active !== false);
-                    if (genRule) appliedRate = genRule.ratePercent; else {
-                        const cat = taxCategories.find(c => c.id === catId);
-                        appliedRate = cat ? cat.defaultRatePercent : 0;
-                    }
-                }
-            }
-            const taxCents = Math.round(amountCents * appliedRate / 100);
-            return {categoryId: l.categoryId, ruleId: l.ruleId, amountCents, appliedRatePercent: appliedRate, taxCents};
-        });
-        const subtotal = lines.reduce((a, l) => a + l.amountCents, 0);
-        const tax = lines.reduce((a, l) => a + l.taxCents, 0);
-        const tx: MockTaxTransaction = {
-            id: 'txt-' + (taxTransactions.length + 1),
-            jurisdictionId,
-            lines,
-            subtotalCents: subtotal,
-            taxCents: tax,
-            totalCents: subtotal + tax,
-            createdAt: new Date().toISOString()
-        };
-        taxTransactions.push(tx);
-        return {data: tx};
-    }
-    if (url.startsWith('/itdn/shuttle/bookings')) {
-        const { hotelId, guestName, guestEmail, pickupStopId, dropoffStopId, scheduledAt, notes, passengers } = body || {};
-        if (!hotelId || !guestName || !guestEmail || !pickupStopId || !dropoffStopId) throw { status: 400, message: 'Missing required fields' };
-        const id = 'sbk-' + (shuttleBookings.length + 1);
-        const trackingCode = 'trk-' + Math.random().toString(36).slice(2, 10);
-        const now = new Date().toISOString();
-        const pickup = shuttleStops.find(s => s.id === pickupStopId);
-        const vehicle = shuttleVehicles.find(v => v.hotelId === hotelId);
-        const eta = vehicle && pickup ? estimateEtaMinutes(vehicle.lat, vehicle.lng, pickup.lat, pickup.lng) : null;
-        const b: ShuttleBooking = { id, hotelId, guestName, guestEmail, pickupStopId, dropoffStopId, scheduledAt: scheduledAt || now, status: 'BOOKED', assignedVehicleId: vehicle?.id || null, etaMinutes: eta, trackingCode, createdAt: now, updatedAt: now, notes: notes || '', passengers: passengers ? Number(passengers) : 1 };
-        shuttleBookings.push(b);
-        return { data: b };
-    }
-    if (url.startsWith('/itdn/shuttle/vehicles/') && url.endsWith('/position')) {
-        const id = url.split('/')[3];
-        const v = shuttleVehicles.find(v => v.id === id);
-        if (!v) throw { status: 404, message: 'Vehicle not found' };
-        const prevLat = v.lat, prevLng = v.lng;
-        v.lat = typeof body.lat === 'number' ? body.lat : v.lat;
-        v.lng = typeof body.lng === 'number' ? body.lng : v.lng;
-        v.lastUpdated = new Date().toISOString();
-        const miles = haversineMiles(prevLat, prevLng, v.lat, v.lng);
-        v.shiftMiles += miles;
-        shuttlePositions.push({ vehicleId: v.id, lat: v.lat, lng: v.lng, timestamp: v.lastUpdated });
-        // Update any EN_ROUTE or BOOKED booking ETA
-        shuttleBookings.forEach(b => {
-            if (b.assignedVehicleId === v.id && (b.status === 'BOOKED' || b.status === 'EN_ROUTE')) {
-                const pickup = shuttleStops.find(s => s.id === b.pickupStopId);
-                if (pickup) b.etaMinutes = estimateEtaMinutes(v.lat, v.lng, pickup.lat, pickup.lng);
-                b.updatedAt = v.lastUpdated;
-            }
-        });
-        return { data: v };
-    }
-    // HR POST endpoints
-    if (url.startsWith('/hr/attendance/clock-in')) {
-        const { userId, notes } = body || {};
-        if (!userId) throw { status: 400, message: 'userId required' };
-        const open = hrAttendance.find(r => r.userId === userId && !r.clockOutAt);
-        if (open) throw { status: 400, message: 'Already clocked in' };
-        const now = new Date().toISOString();
-        const rec: HrAttendance = { id: 'hra-' + (hrAttendance.length + 1), userId, clockInAt: now, clockOutAt: null, notes, createdAt: now, updatedAt: now };
-        hrAttendance.push(rec);
+        financeTransactions.push(rec);
         return { data: rec };
     }
-    if (url.startsWith('/hr/attendance/clock-out')) {
-        const { userId } = body || {};
-        if (!userId) throw { status: 400, message: 'userId required' };
-        const open = [...hrAttendance].reverse().find(r => r.userId === userId && !r.clockOutAt);
-        if (!open) throw { status: 400, message: 'No open attendance' };
-        const now = new Date().toISOString();
-        open.clockOutAt = now;
-        const durMin = Math.max(1, Math.round((new Date(now).getTime() - new Date(open.clockInAt).getTime()) / 60000));
-        open.durationMinutes = durMin;
-        open.updatedAt = now;
-        return { data: open };
+    if (url.startsWith('/groups')) {
+        // create new global group
+        const newGroup: Group = {
+            group_id: `group-${groups.length + 1}`,
+            group_name: body.group_name,
+            group_description: body.group_description,
+            tenant_id: null
+        };
+        groups.push(newGroup);
+        return {data: newGroup};
     }
-    if (url.startsWith('/hr/shifts')) {
-        const { userId, start, end, role, location } = body || {};
-        if (!userId || !start || !end) throw { status: 400, message: 'userId, start, end required' };
-        const rec: HrShift = { id: 'hrs-' + (hrShifts.length + 1), userId, start, end, role, location, status: 'SCHEDULED', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
-        hrShifts.push(rec);
-        return { data: rec };
+    if (url.startsWith('/roles')) {
+        // create new role
+        const newRole: Role = {
+            role_id: `role-${roles.length + 1}`,
+            name: body.name,
+            scope: body.scope
+        };
+        roles.push(newRole);
+        return {data: newRole};
     }
-    if (url.startsWith('/hr/vacations')) {
-        const { userId, startDate, endDate, reason } = body || {};
-        if (!userId || !startDate || !endDate) throw { status: 400, message: 'userId, startDate, endDate required' };
-        const rec: HrVacation = { id: 'hrv-' + (hrVacations.length + 1), userId, startDate, endDate, reason, status: 'PENDING', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
-        hrVacations.push(rec);
-        return { data: rec };
+    if (url.startsWith('/permissions')) {
+        const newPerm: Permission = {
+            permission_id: `perm-${permissions.length + 1}`,
+            name: body.name,
+            description: body.description
+        };
+        permissions.push(newPerm);
+        return {data: newPerm};
     }
-    if (url.startsWith('/hr/availability')) {
-        const { userId, start, end, notes } = body || {};
-        if (!userId || !start || !end) throw { status: 400, message: 'userId, start, end required' };
-        const rec: HrAvailability = { id: 'hrav-' + (hrAvailability.length + 1), userId, start, end, notes, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
-        hrAvailability.push(rec);
-        return { data: rec };
+    if (url.startsWith('/applications')) {
+        const newApp: Application = {
+            application_id: `app-${applications.length + 1}`,
+            name: body.name,
+            description: body.description,
+            host: body.host || null
+        };
+        applications.push(newApp);
+        return {data: newApp};
     }
-    return {data: body};
-};
-
-export const mockPatch = async (url: string, body: any) => {
-    await new Promise(r => setTimeout(r, 120));
-    if (url.startsWith('/users/')) {
-        const id = url.split('/').pop();
-        const idx = users.findIndex(u => u.user_id === id);
-        if (idx !== -1) {
-            users[idx] = {...users[idx], ...body};
-            return {data: users[idx]};
+    if (url.startsWith('/chat/messages')) {
+        const {thread_id, body: messageBody, sender_user_id} = body;
+        const tid = thread_id || 'th-new';
+        let thread = chatThreads.find(t => t.thread_id === tid);
+        if (!thread) {
+            thread = {
+                thread_id: tid,
+                type: 'DIRECT',
+                participant_user_ids: [sender_user_id],
+                last_message_at: new Date().toISOString(),
+                last_message_preview: messageBody
+            };
+            chatThreads.push(thread);
         }
+        const msg: ChatMessage = {
+            message_id: 'msg-' + (chatMessages.length + 1),
+            thread_id: thread.thread_id,
+            sender_user_id,
+            body: messageBody,
+            created_at: new Date().toISOString()
+        };
+        chatMessages.push(msg);
+        thread.last_message_at = msg.created_at;
+        thread.last_message_preview = messageBody;
+        return {data: msg};
     }
-    if (url.startsWith('/tenants/')) {
-        const id = url.split('/').pop();
-        const idx = tenants.findIndex(t => t.tenant_id === id);
-        if (idx !== -1) {
-            tenants[idx] = {...tenants[idx], ...body};
-            return {data: tenants[idx]};
-        }
-        throw {status: 404, message: 'Tenant not found'};
+    if (url.startsWith('/chat/threads')) {
+        // create direct or group thread
+        const {participant_user_ids, type, group_id} = body;
+        const newThread: ChatThread = {
+            thread_id: 'th-' + (chatThreads.length + 1),
+            type: type || 'DIRECT',
+            participant_user_ids: participant_user_ids || [],
+            group_id: group_id || null,
+            last_message_at: null,
+            last_message_preview: null
+        };
+        chatThreads.push(newThread);
+        return {data: newThread};
     }
-    if (url.startsWith('/itdn/shuttle/bookings/')) {
-        const id = url.split('/').pop();
-        const idx = shuttleBookings.findIndex(b => b.id === id);
-        if (idx === -1) throw { status: 404, message: 'Not found' };
-        const before = shuttleBookings[idx];
-        shuttleBookings[idx] = { ...before, ...body, updatedAt: new Date().toISOString() };
-        return { data: shuttleBookings[idx] };
+    if (url.startsWith('/calendar/events')) {
+        const {title, start, end, color, description, location} = body;
+        if (!title || !start || !end) throw {status: 400, message: 'title, start, end required'};
+        const ev: CalendarEvent = {
+            id: 'cal-' + (calendarEvents.length + 1),
+            title,
+            start,
+            end,
+            color,
+            description,
+            location
+        };
+        calendarEvents.push(ev);
+        return {data: ev};
     }
-    // HR PATCH endpoints
-    if (url.startsWith('/hr/shifts/')) {
-        const id = url.split('/').pop();
-        const idx = hrShifts.findIndex(s => s.id === id);
-        if (idx === -1) throw { status: 404, message: 'Not found' };
-        hrShifts[idx] = { ...hrShifts[idx], ...body, updatedAt: new Date().toISOString() };
-        return { data: hrShifts[idx] };
-    }
-    if (url.startsWith('/hr/vacations/')) {
-        const id = url.split('/').pop();
-        const idx = hrVacations.findIndex(v => v.id === id);
-        if (idx === -1) throw { status: 404, message: 'Not found' };
-        hrVacations[idx] = { ...hrVacations[idx], ...body, updatedAt: new Date().toISOString() };
-        return { data: hrVacations[idx] };
-    }
-    return {data: body};
-};
-
-export const mockPut = async (url: string, body: any) => {
-    await new Promise(r => setTimeout(r, 120));
-    if (url.startsWith('/application-users/')) {
-        const parts = url.split('/');
-        const application_id = parts[2];
-        const user_id = parts[3];
-        const entry = applicationUsers.find(a => a.application_id === application_id && a.user_id === user_id);
-        if (!entry) throw {status: 404, message: 'Mapping not found'};
-        if (Array.isArray(body.role_ids)) entry.role_ids = body.role_ids;
-        return {data: entry};
-    }
-    if (url.startsWith('/password-reset-requests/')) {
-        const id = url.split('/').pop();
-        const req = passwordResetRequests.find(r => r.id === id);
-        if (!req) throw {status: 404, message: 'Not found'};
-        // Body may contain status change (APPROVED / DENIED) and optional new password token generation
-        if (body.status && ['APPROVED', 'DENIED'].includes(body.status)) {
-            req.status = body.status;
-            if (req.status === 'APPROVED') {
-                req.token = 'reset-token-' + req.id;
-                req.approved_at = new Date().toISOString();
-            }
-        }
+    if (url.startsWith('/password-reset-requests')) {
+        // create new reset request (PENDING)
+        const {user_id} = body;
+        if (!user_id) throw {status: 400, message: 'user_id required'};
+        const existing = passwordResetRequests.find(r => r.user_id === user_id && r.status === 'PENDING');
+        if (existing) return {data: existing};
+        const req: PasswordResetRequest = {
+            id: 'prr-' + (passwordResetRequests.length + 1),
+            user_id,
+            created_at: new Date().toISOString(),
+            status: 'PENDING'
+        };
+        passwordResetRequests.push(req);
         return {data: req};
     }
-    if (url.startsWith('/calendar/events/')) {
-        const id = url.split('/').pop();
-        const idx = calendarEvents.findIndex(e => e.id === id);
-        if (idx === -1) throw {status: 404, message: 'Not found'};
-        calendarEvents[idx] = {...calendarEvents[idx], ...body};
-        return {data: calendarEvents[idx]};
+    if (url.startsWith('/invitations/') && url.endsWith('/accept')) {
+        const id = url.split('/')[2];
+        const inv = invitations.find(i => i.invitation_id === id && i.status === 'PENDING');
+        if (!inv) throw {status: 404, message: 'Invitation not found'};
+        inv.status = 'ACCEPTED';
+        return {data: inv};
     }
-    // TMS updates
-    if (url.startsWith('/tms/tasks/')) {
-        const id = url.split('/').pop();
-        const idx = tmsTasks.findIndex(t => t.id === id);
-        if (idx === -1) throw {status: 404, message: 'Not found'};
-        tmsTasks[idx] = {...tmsTasks[idx], ...body, updatedAt: new Date().toISOString()};
-        return {data: tmsTasks[idx]};
+    if (url.startsWith('/invitations/') && url.endsWith('/decline')) {
+        const id = url.split('/')[2];
+        const inv = invitations.find(i => i.invitation_id === id && i.status === 'PENDING');
+        if (!inv) throw {status: 404, message: 'Invitation not found'};
+        inv.status = 'DECLINED';
+        return {data: inv};
     }
-    if (url.startsWith('/tms/workflows/instances/')) {
-        const id = url.split('/').pop();
-        const idx = tmsWorkflowInstances.findIndex(i => i.id === id);
-        if (idx === -1) throw {status: 404, message: 'Not found'};
-        tmsWorkflowInstances[idx] = {...tmsWorkflowInstances[idx], ...body};
-        return {data: tmsWorkflowInstances[idx]};
+    if (url.startsWith('/tenant-join-requests')) {
+        const {tenantId} = body || {};
+        if (!tenantId) throw {status: 400, message: 'tenantId required'};
+        const tenant = tenants.find(t => t.tenant_id === tenantId);
+        if (!tenant) throw {status: 404, message: 'Tenant not found'};
+        const currentUser = users.find(u => u.user_id === currentUserId);
+        const req = {
+            request_id: 'tjr-' + (tenantJoinRequests.length + 1),
+            tenant_id: tenant.tenant_id,
+            tenant_name: tenant.tenant_name,
+            created_at: new Date().toISOString(),
+            status: 'PENDING',
+            username: currentUser?.username,
+        };
+        tenantJoinRequests.push(req);
+        return {data: req};
     }
-    if (url.startsWith('/tms/workflows/')) {
-        const id = url.split('/').pop();
-        const idx = tmsWorkflows.findIndex(w => w.id === id);
-        if (idx === -1) throw {status: 404, message: 'Not found'};
-        tmsWorkflows[idx] = {...tmsWorkflows[idx], ...body};
-        return {data: tmsWorkflows[idx]};
+    if (url.startsWith('/tenant-invitations')) {
+        const {tenantId, email, username} = body || {};
+        if (!tenantId || (!email && !username)) throw {status: 400, message: 'tenantId and email or username required'};
+        const inv = {
+            invitation_id: 'tinv-' + (tenantInvitations.length + 1),
+            tenant_id: tenantId,
+            tenant_name: tenants.find(t => t.tenant_id === tenantId)?.tenant_name || 'Unknown',
+            invited_email: email || null,
+            invited_username: username || null,
+            status: 'PENDING',
+            created_at: new Date().toISOString(),
+        };
+        tenantInvitations.push(inv);
+        return {data: inv};
     }
-    if (url.startsWith('/tms/sla-policies/')) {
-        const id = url.split('/').pop();
-        const idx = tmsSlaPolicies.findIndex(p => p.slaPolicyId === id);
-        if (idx === -1) throw {status: 404, message: 'Not found'};
-        tmsSlaPolicies[idx] = {...tmsSlaPolicies[idx], ...body};
-        return {data: tmsSlaPolicies[idx]};
+    if (url.startsWith('/tms/tasks')) {
+        const newTask = { id: 'task-' + (tmsTasks.length + 1), ...body, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+        tmsTasks.push(newTask);
+        return {data: newTask};
     }
-    // Inventory PUT
-    if (url.startsWith('/inventory/categories/')) {
-        const id = url.split('/').pop();
-        const idx = inventoryCategories.findIndex(c => c.id === id);
-        if (idx === -1) throw {status: 404, message: 'Not found'};
-        inventoryCategories[idx] = {...inventoryCategories[idx], ...body, updatedAt: new Date().toISOString()};
-        return {data: inventoryCategories[idx]};
+    if (url.startsWith('/tms/workflows/instances')) {
+        const inst = { id: 'wfi-' + (tmsWorkflowInstances.length + 1), ...body, createdAt: new Date().toISOString() };
+        tmsWorkflowInstances.push(inst);
+        return {data: inst};
     }
-    if (url.startsWith('/inventory/locations/')) {
-        const id = url.split('/').pop();
-        const idx = inventoryLocations.findIndex(c => c.id === id);
-        if (idx === -1) throw {status: 404, message: 'Not found'};
-        inventoryLocations[idx] = {...inventoryLocations[idx], ...body, updatedAt: new Date().toISOString()};
-        return {data: inventoryLocations[idx]};
+    if (url.startsWith('/tms/workflows')) {
+        const wf = { id: 'wf-' + (tmsWorkflows.length + 1), ...body, createdAt: new Date().toISOString() };
+        tmsWorkflows.push(wf);
+        return {data: wf};
     }
-    if (url.startsWith('/inventory/items/')) {
-        const id = url.split('/').pop();
-        const idx = inventoryItems.findIndex(c => c.id === id);
-        if (idx === -1) throw {status: 404, message: 'Not found'};
-        inventoryItems[idx] = {...inventoryItems[idx], ...body, updatedAt: new Date().toISOString()};
-        return {data: inventoryItems[idx]};
+    if (url.startsWith('/tms/workflow-states')) {
+        const { workflowId, key, name, metadata } = body || {};
+        if (!workflowId || !key || !name) throw {status: 400, message: 'workflowId, key, name required'};
+        const state = { id: 'wfs-' + (tmsWorkflowStates.length + 1), workflowId, key, name, metadata, createdAt: new Date().toISOString() };
+        tmsWorkflowStates.push(state);
+        return {data: state};
     }
-    // POS PUT
-    if (url.startsWith('/pos/products/')) {
-        const id = url.split('/').pop();
-        const idx = posProducts.findIndex(p => p.id === id);
-        if (idx === -1) throw {status: 404, message: 'Not found'};
-        posProducts[idx] = {...posProducts[idx], ...body, updatedAt: new Date().toISOString()};
-        return {data: posProducts[idx]};
+    if (url.startsWith('/tms/workflow-transitions')) {
+        const { workflowId, name, fromStateId, toStateId, conditions, actions, metadata } = body || {};
+        if (!workflowId || !name || !fromStateId || !toStateId) throw {status: 400, message: 'workflowId, name, fromStateId, toStateId required'};
+        const tr = { id: 'wft-' + (tmsWorkflowTransitions.length + 1), workflowId, name, fromStateId, toStateId, conditions, actions, metadata, createdAt: new Date().toISOString() };
+        tmsWorkflowTransitions.push(tr);
+        return {data: tr};
     }
-    if (url.startsWith('/pos/customers/')) {
-        const id = url.split('/').pop();
-        const idx = posCustomers.findIndex(p => p.id === id);
-        if (idx === -1) throw {status: 404, message: 'Not found'};
-        posCustomers[idx] = {...posCustomers[idx], ...body, updatedAt: new Date().toISOString()};
-        return {data: posCustomers[idx]};
+    if (url.startsWith('/tms/sla-policies')) {
+        const name = body?.name || 'Policy ' + (tmsSlaPolicies.length + 1);
+        const targetHours = Number(body?.targetHours) || 24;
+        const rec: MockSlaPolicy = {
+            slaPolicyId: 'sla-' + (tmsSlaPolicies.length + 1),
+            name,
+            description: body?.description,
+            targetHours,
+            durationSeconds: targetHours * 3600,
+            createdAt: new Date().toISOString(),
+        };
+        tmsSlaPolicies.push(rec);
+        return {data: rec};
     }
-    // Tax PUT
-    if (url.startsWith('/tax/jurisdictions/')) {
-        const id = url.split('/').pop();
-        const idx = taxJurisdictions.findIndex(j => j.id === id);
-        if (idx === -1) throw {status: 404, message: 'Not found'};
-        taxJurisdictions[idx] = {...taxJurisdictions[idx], ...body, updatedAt: new Date().toISOString()};
-        return {data: taxJurisdictions[idx]};
+    // Inventory POST
+    if (url.startsWith('/inventory/categories')) {
+        const nc: InventoryCategory = {
+            id: 'cat-' + (inventoryCategories.length + 1),
+            name: body.name || 'Category',
+            description: body.description || '',
+            createdAt: new Date().toISOString()
+        };
+        inventoryCategories.push(nc);
+        return {data: nc};
     }
-    if (url.startsWith('/tax/categories/')) {
-        const id = url.split('/').pop();
-        const idx = taxCategories.findIndex(j => j.id === id);
-        if (idx === -1) throw {status: 404, message: 'Not found'};
-        taxCategories[idx] = {...taxCategories[idx], ...body, updatedAt: new Date().toISOString()};
-        return {data: taxCategories[idx]};
+    if (url.startsWith('/inventory/locations')) {
+        const nl: InventoryLocation = {
+            id: 'loc-' + (inventoryLocations.length + 1),
+            name: body.name || 'Location',
+            description: body.description || '',
+            createdAt: new Date().toISOString()
+        };
+        inventoryLocations.push(nl);
+        return {data: nl};
     }
-    if (url.startsWith('/tax/rules/')) {
-        const id = url.split('/').pop();
-        const idx = taxRules.findIndex(j => j.id === id);
-        if (idx === -1) throw {status: 404, message: 'Not found'};
-        taxRules[idx] = {...taxRules[idx], ...body, updatedAt: new Date().toISOString()};
-        return {data: taxRules[idx]};
+    if (url.startsWith('/inventory/items')) {
+        const ni: InventoryItem = {
+            id: 'inv-' + (inventoryItems.length + 1),
+            sku: body.sku || ('SKU-' + (inventoryItems.length + 1)),
+            name: body.name || 'Item',
+            categoryId: body.categoryId,
+            locationId: body.locationId,
+            quantity: Number(body.quantity) || 0,
+            reorderLevel: body.reorderLevel ? Number(body.reorderLevel) : undefined,
+            description: body.description || '',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        };
+        inventoryItems.push(ni);
+        return {data: ni};
     }
-    return {data: body};
-};
-
-export const mockDelete = async (url: string) => {
-    await new Promise(r => setTimeout(r, 120));
-    if (url.startsWith('/users/')) {
+    if (url.startsWith('/inventory/movements')) {
+        const itemId = body.itemId;
+        const delta = Number(body.delta) || 0;
+        const item = inventoryItems.find(i => i.id === itemId);
+        if (!item) throw {status: 404, message: 'Item not found'};
+        item.quantity = item.quantity + delta;
+        item.updatedAt = new Date().toISOString();
+        const mv: InventoryMovement = {
+            id: 'mov-' + (inventoryMovements.length + 1),
+            itemId,
+            delta,
+            reason: body.reason || '',
+            createdAt: new Date().toISOString(),
+            resultingQuantity: item.quantity
+        };
+        inventoryMovements.push(mv);
+        return {data: mv};
+    }
+    // Finance POST
+    if (url.startsWith('/finance/accounts')) {
+        const code: string | undefined = body.code;
+        if (code != null && code !== '' && !/^\d+$/.test(String(code))) throw { status: 400, message: 'code must be numeric' };
+        const type = (body.type || '').toUpperCase();
+        if (type !== 'ASSET' && type !== 'LIABILITY') throw { status: 400, message: 'type must be ASSET or LIABILITY' };
+        const currency: string = (body.currency || 'USD').toUpperCase();
+        const balCentsRaw = body.balanceCents != null ? Number(body.balanceCents) : null;
+        const balanceCents = Number.isFinite(balCentsRaw) ? Math.round(Number(balCentsRaw)) : 0;
+        const na: MockFinanceAccount = {
+            id: 'fa-' + (financeAccounts.length + 1),
+            tenantId: body.tenantId || null,
+            type: type as 'ASSET' | 'LIABILITY',
+            name: body.name,
+            code: code || undefined,
+            currency,
+            balanceCents,
+            description: body.description,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        };
+        financeAccounts.push(na);
+        return {data: na};
+    }
+    if (url.startsWith('/finance/transactions')) {
+        const { tenantId, date, currency, reference, memo, lines } = body || {};
+        const cur = (currency || 'USD').toUpperCase();
+        if (!date) throw { status: 400, message: 'date required' };
+        if (!/^[A-Z]{3}$/.test(cur)) throw { status: 400, message: 'currency must be 3-letter code' };
+        const arr: any[] = Array.isArray(lines) ? lines : [];
+        if (arr.length < 2) throw { status: 400, message: 'need at least 2 lines' };
+        let debit = 0, credit = 0;
+        for (const l of arr) {
+            const acct = financeAccounts.find(a => a.id === l.accountId);
+            if (!acct) throw { status: 400, message: 'invalid account in lines' };
+            const d = Math.max(0, Math.round(Number(l.debitCents) || 0));
+            const c = Math.max(0, Math.round(Number(l.creditCents) || 0));
+            if (d > 0 && c > 0) throw { status: 400, message: 'line cannot have both debit and credit' };
+            if (d === 0 && c === 0) throw { status: 400, message: 'line must have debit or credit' };
+            debit += d; credit += c;
+        }
+        if (debit !== credit || debit === 0) throw { status: 400, message: 'entry must be balanced and non-zero' };
+        const rec: MockFinanceTransaction = {
+            id: 'ftx-' + (financeTransactions.length + 1),
+            tenantId: tenantId || null,
+            date,
+            currency: cur,
+            reference: reference || '',
+            memo: memo || '',
+            status: 'POSTED',
+            lines: arr.map(l => ({ accountId: l.accountId, description: l.description || '', debitCents: Math.round(Number(l.debitCents) || 0), creditCents: Math.round(Number(l.creditCents) || 0) })),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+        };
+        financeTransactions.push(rec);
+        return { data: rec };
+    }
+    if (url.startsWith('/groups')) {
+        // create new global group
+        const newGroup: Group = {
+            group_id: `group-${groups.length + 1}`,
+            group_name: body.group_name,
+            group_description: body.group_description,
+            tenant_id: null
+        };
+        groups.push(newGroup);
+        return {data: newGroup};
+    }
+    if (url.startsWith('/roles')) {
+        // create new role
+        const newRole: Role = {
+            role_id: `role-${roles.length + 1}`,
+            name: body.name,
+            scope: body.scope
+        };
+        roles.push(newRole);
+        return {data: newRole};
+    }
+    if (url.startsWith('/permissions')) {
+        const newPerm: Permission = {
+            permission_id: `perm-${permissions.length + 1}`,
+            name: body.name,
+            description: body.description
+        };
+        permissions.push(newPerm);
+        return {data: newPerm};
+    }
+    if (url.startsWith('/applications')) {
+        const newApp: Application = {
+            application_id: `app-${applications.length + 1}`,
+            name: body.name,
+            description: body.description,
+            host: body.host || null
+        };
+        applications.push(newApp);
+        return {data: newApp};
+    }
+    if (url.startsWith('/chat/messages')) {
+        const {thread_id, body: messageBody, sender_user_id} = body;
+        const tid = thread_id || 'th-new';
+        let thread = chatThreads.find(t => t.thread_id === tid);
+        if (!thread) {
+            thread = {
+                thread_id: tid,
+                type: 'DIRECT',
+                participant_user_ids: [sender_user_id],
+                last_message_at: new Date().toISOString(),
+                last_message_preview: messageBody
+            };
+            chatThreads.push(thread);
+        }
+        const msg: ChatMessage = {
+            message_id: 'msg-' + (chatMessages.length + 1),
+            thread_id: thread.thread_id,
+            sender_user_id,
+            body: messageBody,
+            created_at: new Date().toISOString()
+        };
+        chatMessages.push(msg);
+        thread.last_message_at = msg.created_at;
+        thread.last_message_preview = messageBody;
+        return {data: msg};
+    }
+    if (url.startsWith('/chat/threads')) {
+        // create direct or group thread
+        const {participant_user_ids, type, group_id} = body;
+        const newThread: ChatThread = {
+            thread_id: 'th-' + (chatThreads.length + 1),
+            type: type || 'DIRECT',
+            participant_user_ids: participant_user_ids || [],
+            group_id: group_id || null,
+            last_message_at: null,
+            last_message_preview: null
+        };
+        chatThreads.push(newThread);
+        return {data: newThread};
+    }
+    if (url.startsWith('/calendar/events')) {
+        const {title, start, end, color, description, location} = body;
+        if (!title || !start || !end) throw {status: 400, message: 'title, start, end required'};
+        const ev: CalendarEvent = {
+            id: 'cal-' + (calendarEvents.length + 1),
+            title,
+            start,
+            end,
+            color,
+            description,
+            location
+        };
+        calendarEvents.push(ev);
+        return {data: ev};
+    }
+    if (url.startsWith('/password-reset-requests')) {
+        // create new reset request (PENDING)
+        const {user_id} = body;
+        if (!user_id) throw {status: 400, message: 'user_id required'};
+        const existing = passwordResetRequests.find(r => r.user_id === user_id && r.status === 'PENDING');
+        if (existing) return {data: existing};
+        const req: PasswordResetRequest = {
+            id: 'prr-' + (passwordResetRequests.length + 1),
+            user_id,
+            created_at: new Date().toISOString(),
+            status: 'PENDING'
+        };
+        passwordResetRequests.push(req);
+        return {data: req};
+    }
+    if (url.startsWith('/invitations/') && url.endsWith('/accept')) {
+        const id = url.split('/')[2];
+        const inv = invitations.find(i => i.invitation_id === id && i.status === 'PENDING');
+        if (!inv) throw {status: 404, message: 'Invitation not found'};
+        inv.status = 'ACCEPTED';
+        return {data: inv};
+    }
+    if (url.startsWith('/invitations/') && url.endsWith('/decline')) {
+        const id = url.split('/')[2];
+        const inv = invitations.find(i => i.invitation_id === id && i.status === 'PENDING');
+        if (!inv) throw {status: 404, message: 'Invitation not found'};
+        inv.status = 'DECLINED';
+        return {data: inv};
+    }
+    if (url.startsWith('/tenant-join-requests')) {
+        const {tenantId} = body || {};
+        if (!tenantId) throw {status: 400, message: 'tenantId required'};
+        const tenant = tenants.find(t => t.tenant_id === tenantId);
+        if (!tenant) throw {status: 404, message: 'Tenant not found'};
+        const currentUser = users.find(u => u.user_id === currentUserId);
+        const req = {
+            request_id: 'tjr-' + (tenantJoinRequests.length + 1),
+            tenant_id: tenant.tenant_id,
+            tenant_name: tenant.tenant_name,
+            created_at: new Date().toISOString(),
+            status: 'PENDING',
+            username: currentUser?.username,
+        };
+        tenantJoinRequests.push(req);
+        return {data: req};
+    }
+    if (url.startsWith('/tenant-invitations')) {
+        const {tenantId, email, username} = body || {};
+        if (!tenantId || (!email && !username)) throw {status: 400, message: 'tenantId and email or username required'};
+        const inv = {
+            invitation_id: 'tinv-' + (tenantInvitations.length + 1),
+            tenant_id: tenantId,
+            tenant_name: tenants.find(t => t.tenant_id === tenantId)?.tenant_name || 'Unknown',
+            invited_email: email || null,
+            invited_username: username || null,
+            status: 'PENDING',
+            created_at: new Date().toISOString(),
+        };
+        tenantInvitations.push(inv);
+        return {data: inv};
+    }
+    if (url.startsWith('/tms/tasks')) {
+        const newTask = { id: 'task-' + (tmsTasks.length + 1), ...body, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+        tmsTasks.push(newTask);
+        return {data: newTask};
+    }
+    if (url.startsWith('/tms/workflows/instances')) {
+        const inst = { id: 'wfi-' + (tmsWorkflowInstances.length + 1), ...body, createdAt: new Date().toISOString() };
+        tmsWorkflowInstances.push(inst);
+        return {data: inst};
+    }
+    if (url.startsWith('/tms/workflows')) {
+        const wf = { id: 'wf-' + (tmsWorkflows.length + 1), ...body, createdAt: new Date().toISOString() };
+        tmsWorkflows.push(wf);
+        return {data: wf};
+    }
+    if (url.startsWith('/tms/workflow-states')) {
+        const { workflowId, key, name, metadata } = body || {};
+        if (!workflowId || !key || !name) throw {status: 400, message: 'workflowId, key, name required'};
+        const state = { id: 'wfs-' + (tmsWorkflowStates.length + 1), workflowId, key, name, metadata, createdAt: new Date().toISOString() };
+        tmsWorkflowStates.push(state);
+        return {data: state};
+    }
+    if (url.startsWith('/tms/workflow-transitions')) {
+        const { workflowId, name, fromStateId, toStateId, conditions, actions, metadata } = body || {};
+        if (!workflowId || !name || !fromStateId || !toStateId) throw {status: 400, message: 'workflowId, name, fromStateId, toStateId required'};
+        const tr = { id: 'wft-' + (tmsWorkflowTransitions.length + 1), workflowId, name, fromStateId, toStateId, conditions, actions, metadata, createdAt: new Date().toISOString() };
+        tmsWorkflowTransitions.push(tr);
+        return {data: tr};
+    }
+    // Finance DELETE
+    if (url.startsWith('/finance/accounts/')) {
         const id = url.split('/').pop();
-        const idx = users.findIndex(u => u.user_id === id);
-        if (idx !== -1) users.splice(idx, 1);
+        const idx = financeAccounts.findIndex(a => a.id === id);
+        if (idx !== -1) financeAccounts.splice(idx, 1);
         return {data: {success: true}};
     }
-    if (url.startsWith('/password-reset-requests/')) {
+    if (url.startsWith('/finance/transactions/')) {
         const id = url.split('/').pop();
-        const idx = passwordResetRequests.findIndex(r => r.id === id);
-        if (idx !== -1) passwordResetRequests.splice(idx, 1);
-        return {data: {success: true}};
-    }
-    if (url.startsWith('/calendar/events/')) {
-        const id = url.split('/').pop();
-        const idx = calendarEvents.findIndex(e => e.id === id);
-        if (idx !== -1) calendarEvents.splice(idx, 1);
-        return {data: {success: true}};
-    }
-    // TMS deletes
-    if (url.startsWith('/tms/tasks/')) {
-        const id = url.split('/').pop();
-        const idx = tmsTasks.findIndex(t => t.id === id);
-        if (idx !== -1) tmsTasks.splice(idx, 1);
-        return {data: {success: true}};
-    }
-    if (url.startsWith('/tms/workflows/instances/')) {
-        const id = url.split('/').pop();
-        const idx = tmsWorkflowInstances.findIndex(i => i.id === id);
-        if (idx !== -1) tmsWorkflowInstances.splice(idx, 1);
-        return {data: {success: true}};
-    }
-    if (url.startsWith('/tms/workflows/')) {
-        const id = url.split('/').pop();
-        const idx = tmsWorkflows.findIndex(w => w.id === id);
-        if (idx !== -1) tmsWorkflows.splice(idx, 1);
-        return {data: {success: true}};
-    }
-    if (url.startsWith('/tms/sla-policies/')) {
-        const id = url.split('/').pop();
-        const idx = tmsSlaPolicies.findIndex(p => p.slaPolicyId === id);
-        if (idx !== -1) tmsSlaPolicies.splice(idx, 1);
+        const idx = financeTransactions.findIndex(t => t.id === id);
+        if (idx !== -1) financeTransactions.splice(idx, 1);
         return {data: {success: true}};
     }
     // Inventory DELETE
@@ -1594,6 +1629,19 @@ export const mockDelete = async (url: string) => {
         const id = url.split('/').pop();
         const idx = inventoryItems.findIndex(c => c.id === id);
         if (idx !== -1) inventoryItems.splice(idx, 1);
+        return {data: {success: true}};
+    }
+    // Finance DELETE
+    if (url.startsWith('/finance/accounts/')) {
+        const id = url.split('/').pop();
+        const idx = financeAccounts.findIndex(a => a.id === id);
+        if (idx !== -1) financeAccounts.splice(idx, 1);
+        return {data: {success: true}};
+    }
+    if (url.startsWith('/finance/transactions/')) {
+        const id = url.split('/').pop();
+        const idx = financeTransactions.findIndex(t => t.id === id);
+        if (idx !== -1) financeTransactions.splice(idx, 1);
         return {data: {success: true}};
     }
     // POS DELETE
@@ -1630,3 +1678,100 @@ export const mockDelete = async (url: string) => {
     }
     return {data: {success: false}};
 };
+// --- Inventory (mock) ---
+const inventoryCategories: InventoryCategory[] = [
+    { id: 'cat-1', name: 'Beverages', description: 'Drinks', createdAt: new Date().toISOString() },
+    { id: 'cat-2', name: 'Snacks', description: 'Quick bites', createdAt: new Date().toISOString() },
+];
+const inventoryLocations: InventoryLocation[] = [
+    { id: 'loc-1', name: 'Warehouse A', description: 'Primary WH', createdAt: new Date().toISOString() },
+    { id: 'loc-2', name: 'Store Front', description: 'Retail floor', createdAt: new Date().toISOString() },
+];
+const inventoryItems: InventoryItem[] = [
+    { id: 'inv-1', sku: 'SKU-1', name: 'Cola 12oz', categoryId: 'cat-1', locationId: 'loc-2', quantity: 24, reorderLevel: 6, description: 'Soda', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+    { id: 'inv-2', sku: 'SKU-2', name: 'Chips 2oz', categoryId: 'cat-2', locationId: 'loc-2', quantity: 50, reorderLevel: 10, description: 'Snack', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+];
+const inventoryMovements: InventoryMovement[] = [];
+
+// --- Finance (mock) ---
+interface MockFinanceAccount { id: string; tenantId?: string | null; type: 'ASSET' | 'LIABILITY'; name: string; code?: string; currency: string; balanceCents: number; description?: string; createdAt: string; updatedAt: string }
+const financeAccounts: MockFinanceAccount[] = [
+  { id: 'fa-1', tenantId: tenants[0].tenant_id, type: 'ASSET', name: 'Cash', code: '1000', currency: 'USD', balanceCents: 12500, description: 'Cash and equivalents', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: 'fa-2', tenantId: tenants[0].tenant_id, type: 'LIABILITY', name: 'Accounts Payable', code: '2000', currency: 'USD', balanceCents: 450000, description: 'Vendors payable', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+];
+interface MockFinanceTransactionLine { accountId: string; description?: string; debitCents?: number; creditCents?: number }
+interface MockFinanceTransaction { id: string; tenantId?: string | null; date: string; currency: string; reference?: string; memo?: string; status?: 'POSTED' | 'DRAFT' | 'VOID'; lines: MockFinanceTransactionLine[]; createdAt: string; updatedAt: string }
+const financeTransactions: MockFinanceTransaction[] = [
+    { id: 'ftx-1', tenantId: tenants[0].tenant_id, date: new Date().toISOString().slice(0,10), currency: 'USD', reference: 'JE-1001', memo: 'Opening balance', status: 'POSTED', lines: [ { accountId: 'fa-1', debitCents: 12500 }, { accountId: 'fa-2', creditCents: 12500 } ], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+];
+
+// --- POS (mock) ---
+interface MockPosProduct { id: string; sku: string; name: string; priceCents: number; active?: boolean; createdAt?: string; updatedAt?: string }
+interface MockPosCustomer { id: string; name: string; email?: string; phone?: string; createdAt?: string; updatedAt?: string }
+interface MockPosSaleItem { productId: string; quantity: number; unitPriceCents: number; lineTotalCents: number }
+interface MockPosSale { id: string; customerId?: string; items: MockPosSaleItem[]; subtotalCents: number; taxCents: number; totalCents: number; createdAt: string }
+const posProducts: MockPosProduct[] = [
+    { id: 'pp-1', sku: 'POS-1', name: 'Coffee', priceCents: 299, active: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+    { id: 'pp-2', sku: 'POS-2', name: 'Tea', priceCents: 249, active: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+];
+const posCustomers: MockPosCustomer[] = [
+    { id: 'pc-1', name: 'Alice', email: 'alice@example.com', phone: '555-1000', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+];
+const posSales: MockPosSale[] = [];
+
+// --- Tax (mock) ---
+interface MockTaxJurisdiction { id: string; code: string; name: string; createdAt?: string; updatedAt?: string }
+interface MockTaxCategory { id: string; name: string; description?: string; defaultRatePercent?: number; createdAt?: string; updatedAt?: string }
+interface MockTaxRule { id: string; name: string; jurisdictionId: string; categoryId?: string; ratePercent: number; active?: boolean; createdAt?: string; updatedAt?: string }
+interface MockTaxTransactionLine { categoryId?: string; ruleId?: string; amountCents: number; appliedRatePercent: number; taxCents: number }
+interface MockTaxTransaction { id: string; jurisdictionId: string; lines: MockTaxTransactionLine[]; subtotalCents: number; taxCents: number; totalCents: number; createdAt: string }
+const taxJurisdictions: MockTaxJurisdiction[] = [
+    { id: 'txj-1', code: 'CA', name: 'California', createdAt: new Date().toISOString() },
+];
+const taxCategories: MockTaxCategory[] = [
+    { id: 'txc-1', name: 'Food', description: 'Groceries', defaultRatePercent: 0, createdAt: new Date().toISOString() },
+    { id: 'txc-2', name: 'General', description: 'General goods', defaultRatePercent: 7.5, createdAt: new Date().toISOString() },
+];
+const taxRules: MockTaxRule[] = [
+    { id: 'txr-1', name: 'CA General', jurisdictionId: 'txj-1', ratePercent: 7.5, active: true, createdAt: new Date().toISOString() },
+];
+const taxTransactions: MockTaxTransaction[] = [];
+
+// --- ITDN Shuttle (mock) ---
+interface ShuttleStop { id: string; hotelId: string; name: string; lat: number; lng: number }
+interface ShuttleVehicle { id: string; hotelId: string; name: string; lat: number; lng: number; lastUpdated: string; shiftMiles: number; active?: boolean }
+interface ShuttleBooking { id: string; hotelId: string; guestName: string; guestEmail: string; pickupStopId: string; dropoffStopId: string; scheduledAt: string; status: 'BOOKED' | 'EN_ROUTE' | 'PICKED_UP' | 'DROPPED_OFF' | 'RUNNING_LATE'; assignedVehicleId?: string | null; etaMinutes?: number | null; trackingCode: string; createdAt: string; updatedAt: string; notes?: string; passengers?: number }
+const shuttleStops: ShuttleStop[] = [
+    { id: 'stop-1', hotelId: tenants[0].tenant_id, name: 'Lobby', lat: 37.7749, lng: -122.4194 },
+    { id: 'stop-2', hotelId: tenants[0].tenant_id, name: 'Airport', lat: 37.6213, lng: -122.3790 },
+];
+const shuttleVehicles: ShuttleVehicle[] = [
+    { id: 'veh-1', hotelId: tenants[0].tenant_id, name: 'Shuttle 1', lat: 37.77, lng: -122.41, lastUpdated: new Date().toISOString(), shiftMiles: 0, active: true },
+];
+const shuttleBookings: ShuttleBooking[] = [];
+const shuttlePositions: { vehicleId: string; lat: number; lng: number; timestamp: string }[] = [];
+
+function haversineMiles(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const toRad = (x: number) => x * Math.PI / 180;
+    const R = 3958.8; // miles
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2)**2;
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+}
+function estimateEtaMinutes(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const miles = haversineMiles(lat1, lon1, lat2, lon2);
+    const mph = 20; // assume 20 mph average
+    return Math.max(1, Math.round((miles / mph) * 60));
+}
+
+// --- HR (mock) ---
+interface HrAttendance { id: string; userId: string; clockInAt: string; clockOutAt?: string | null; durationMinutes?: number; notes?: string; createdAt: string; updatedAt: string }
+interface HrShift { id: string; userId: string; start: string; end: string; role?: string; location?: string; status?: 'SCHEDULED'|'COMPLETED'|'CANCELLED'; createdAt: string; updatedAt: string }
+interface HrVacation { id: string; userId: string; startDate: string; endDate: string; reason?: string; status: 'PENDING'|'APPROVED'|'DENIED'; createdAt: string; updatedAt: string }
+interface HrAvailability { id: string; userId: string; start: string; end: string; notes?: string; createdAt: string; updatedAt: string }
+const hrAttendance: HrAttendance[] = [];
+const hrShifts: HrShift[] = [];
+const hrVacations: HrVacation[] = [];
+const hrAvailability: HrAvailability[] = [];
