@@ -29,7 +29,7 @@ export const LoginForm: React.FC = () => {
                 ? {email: identifier, password}
                 : {username: identifier, password};
             // Call new auth service endpoint (separate base path)
-            const resp = await apiClient.post('/api/auth/login', payload);
+            const resp = await apiClient.post('/auth/login', payload);
             // Read tokens from response body
             const {accessToken, refreshToken, expiresInSeconds, token} = (resp.data || {}) as any;
             const effectiveToken = accessToken || token;

@@ -48,7 +48,7 @@ export const SignUpForm: React.FC = () => {
         setFieldErrors({});
         try {
             const payload = {...form, tenantId: undefined};
-            const resp = await apiClient.post('/api/auth/signup', payload);
+            const resp = await apiClient.post('/auth/signup', payload);
             const body: AuthResponse = (resp.data || {}) as AuthResponse;
             const {accessToken, expiresInSeconds, userId, token} = body;
             const effectiveToken = accessToken || token;
