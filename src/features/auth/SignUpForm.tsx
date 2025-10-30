@@ -60,7 +60,22 @@ export const SignUpForm: React.FC = () => {
                 if (expiresInSeconds > 24 * 3600) expiresAtMs = Number(expiresInSeconds) * 1000; else expiresAtMs = Date.now() + Number(expiresInSeconds) * 1000;
                 localStorage.setItem('expiresAt', String(expiresAtMs));
             }
-            setSession({token: effectiveToken || null, userId: effectiveUserId, expiresAt: expiresAtMs});
+            // Build new Session shape
+            const expiryMap = new Map<string, any>();
+            if (expiresAtMs) {
+                expiryMap.set('login', {
+                    type: 'login',
+                    tenantId: '',
+                    expiresAt: expiresAtMs ?? 0,
+                    refreshToken: '',
+                });
+            }
+            setSession({
+                token: effectiveToken || '',
+                tenant_tokens: new Map<string, string>(),
+                tenants: new Map<string, any>(),
+                expiry: expiryMap,
+            });
             router.push('/tenant/register');
         } catch (e: unknown) {
             const err = e as Partial<ApiErrorShape> | undefined;

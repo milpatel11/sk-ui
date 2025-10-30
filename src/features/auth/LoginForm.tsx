@@ -45,7 +45,22 @@ export const LoginForm: React.FC = () => {
                 }
                 localStorage.setItem('expiresAt', String(expiresAtMs));
             }
-            setSession({token: effectiveToken || null, userId: identifier, expiresAt: expiresAtMs});
+            // Build new Session shape
+            const expiryMap = new Map<string, any>();
+            if (expiresAtMs || refreshToken) {
+                expiryMap.set('login', {
+                    type: 'login',
+                    tenantId: '',
+                    expiresAt: expiresAtMs ?? 0,
+                    refreshToken: refreshToken || '',
+                });
+            }
+            setSession({
+                token: effectiveToken || '',
+                tenant_tokens: new Map<string, string>(),
+                tenants: new Map<string, any>(),
+                expiry: expiryMap,
+            });
             if (tenants.length > 1) {
                 setStage('tenant');
             } else {
