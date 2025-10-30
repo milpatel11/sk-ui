@@ -53,18 +53,20 @@ async function doFetch(method: string, url: string, data?: unknown, init?: Reque
     if (!res.ok) {
         let payload: any = undefined
         try { payload = await res.json() } catch {}
-        const apiError: ApiError = {
+        throw {
             status: res.status,
             message: payload?.message || res.statusText || 'Unknown error',
             details: payload,
-        }
-        throw apiError
+        } as ApiError
     }
     let parsed: any = null
     if (res.status !== 204) {
         try { parsed = await res.json() } catch { parsed = null }
     }
-    return { data: parsed }
+    // Return headers as plain object in addition to data
+    const headers: Record<string, string> = {}
+    res.headers.forEach((v, k) => { headers[k.toLowerCase()] = v })
+    return { data: parsed, headers }
 }
 
 export const apiClient = {

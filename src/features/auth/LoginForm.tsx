@@ -19,6 +19,9 @@ export const LoginForm: React.FC = () => {
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
     const submit = async (e: React.FormEvent) => {
+        // Read expiration config from env; backend provides no expiry and tokens are in response headers only
+        const loginTimeoutMs = Number(process.env.NEXT_PUBLIC_AUTH_BE_TIMEOUT) || 3600000; // default 60 minutes
+
         e.preventDefault();
         setLoading(true);
         setError(null);
@@ -28,33 +31,29 @@ export const LoginForm: React.FC = () => {
             const payload = identifier.includes('@')
                 ? {email: identifier, password}
                 : {username: identifier, password};
-            // Call new auth service endpoint (separate base path)
-            const resp = await apiClient.post('/auth/login', payload);
-            // Read tokens from response body
-            const {accessToken, refreshToken, expiresInSeconds, token} = (resp.data || {}) as any;
-            const effectiveToken = accessToken || token;
-            if (effectiveToken) localStorage.setItem('authToken', effectiveToken);
-            if (refreshToken) localStorage.setItem('refreshToken', refreshToken);
-            localStorage.setItem('userId', identifier);
-            let expiresAtMs: number | null = null;
-            if (expiresInSeconds) {
-                if (expiresInSeconds > 24 * 3600) {
-                    expiresAtMs = Number(expiresInSeconds) * 1000; // treat as epoch seconds
-                } else {
-                    expiresAtMs = Date.now() + Number(expiresInSeconds) * 1000; // treat as relative seconds
-                }
-                localStorage.setItem('expiresAt', String(expiresAtMs));
-            }
-            // Build new Session shape
+            const resp: any = await apiClient.post('/auth/login', payload);
+
+            // Prefer tokens from headers; fallback to body for flexibility in dev
+            const headers: Record<string, string> = (resp?.headers || {}) as any;
+            const headerAuth = headers['authorization'];
+            const headerRefresh = headers['x-refresh-token'];
+            const effectiveToken: string | undefined = (headerAuth && headerAuth.startsWith('Bearer ') ? headerAuth.slice(7) : headerAuth);
+            const refreshToken: string | undefined = headerRefresh && headerAuth.startsWith('Bearer ') ? headerRefresh.slice(7) : headerRefresh;
+
+
+            // Compute expiry as now + configured timeout; do not persist expiry in localStorage
+            const expiresAtMs = Date.now() + loginTimeoutMs;
+
+            // Build new Session shape in context only
             const expiryMap = new Map<string, any>();
-            if (expiresAtMs || refreshToken) {
-                expiryMap.set('login', {
-                    type: 'login',
-                    tenantId: '',
-                    expiresAt: expiresAtMs ?? 0,
-                    refreshToken: refreshToken || '',
-                });
-            }
+
+            expiryMap.set('login', {
+                type: 'login',
+                tenantId: '',
+                expiresAt: expiresAtMs,
+                refreshToken: refreshToken,
+            });
+
             setSession({
                 token: effectiveToken || '',
                 tenant_tokens: new Map<string, string>(),

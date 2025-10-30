@@ -42,6 +42,7 @@ const createEmptySession = (): Session => ({
 const LOGIN_KEY = 'login';
 const getLoginExpiry = (s: Session): number | null => s.expiry.get(LOGIN_KEY)?.expiresAt ?? null;
 const getLoginRefreshToken = (s: Session): string | null => s.expiry.get(LOGIN_KEY)?.refreshToken ?? null;
+const loginTimeoutMs: number = Number(process.env.NEXT_PUBLIC_AUTH_BE_TIMEOUT) || 3600000;
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({children}) => {
     const [session, setSession] = useState<Session>(createEmptySession());
@@ -71,11 +72,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({children}
             } else {
                 const next = createEmptySession();
                 next.token = token || '';
-                if (expiresAt || storedRefreshToken) {
+                // Only hydrate expiry if an explicit expiresAt was previously stored
+                if (expiresAt != null) {
                     next.expiry.set(LOGIN_KEY, {
                         type: 'login',
                         tenantId: '',
-                        expiresAt: expiresAt ?? 0,
+                        expiresAt: expiresAt,
                         refreshToken: storedRefreshToken || '',
                     });
                 }
@@ -102,32 +104,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({children}
     const refreshSession = async () => {
         if (typeof window === 'undefined') return;
         try {
-            const currentRefresh = getLoginRefreshToken(session);
-            const resp = await apiClient.post('/auth/refresh', currentRefresh ? {refreshToken: currentRefresh} : undefined);
-            const {accessToken, refreshToken: newRefreshToken, expiresInSeconds} = resp.data || {};
-            const newExpiresAt = expiresInSeconds ? (Number(expiresInSeconds) > 24 * 3600 ? Number(expiresInSeconds) * 1000 : Date.now() + Number(expiresInSeconds) * 1000) : null;
+            const currentRefresh = getLoginRefreshToken(session) || localStorage.getItem('refreshToken') || undefined;
+            const resp: any = await apiClient.post('/auth/refresh', currentRefresh ? {refreshToken: currentRefresh} : undefined);
+            const body = resp?.data || {};
+            const headers: Record<string, string> = (resp?.headers || {}) as any;
+            const headerAuth = headers['authorization'];
+            const headerRefresh = headers['x-refresh-token'] || headers['refresh-token'];
+            const accessToken: string | undefined = body.accessToken || (headerAuth && headerAuth.startsWith('Bearer ') ? headerAuth.slice(7) : headerAuth);
+            const newRefreshToken: string | undefined = body.refreshToken || headerRefresh;
+            const newExpiresAt = Date.now() + loginTimeoutMs;
             const next = {...createEmptySession(), ...session};
             next.token = accessToken || session.token || '';
             next.expiry.set(LOGIN_KEY, {
                 type: 'login',
                 tenantId: '',
-                expiresAt: newExpiresAt ?? getLoginExpiry(session) ?? 0,
+                expiresAt: newExpiresAt,
                 refreshToken: newRefreshToken || currentRefresh || '',
             });
             setSession(next);
             if (accessToken) localStorage.setItem('authToken', accessToken);
             if (newRefreshToken) localStorage.setItem('refreshToken', newRefreshToken);
-            if (newExpiresAt) localStorage.setItem('expiresAt', String(newExpiresAt));
+            // Intentionally avoid persisting expiresAt to localStorage as per requirement
         } catch {
             logout();
         }
     };
 
-    // Show confirm dialog 1 minute before login token expiry
+    // Show confirm dialog 5 minutes before login token expiry
     useEffect(() => {
         const loginExpiry = getLoginExpiry(session);
         if (!session.token || !loginExpiry) return;
-        const msUntilPrompt = loginExpiry - Date.now() - 60_000;
+        const msUntilPrompt = loginExpiry - Date.now() - 5 * 60_000;
         const delay = Math.max(0, msUntilPrompt);
         const timeout = setTimeout(() => setDialogOpen(true), delay);
         return () => clearTimeout(timeout);
