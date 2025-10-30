@@ -1,53 +1,9 @@
 "use client";
-import React, {useState} from 'react';
+import React from 'react';
 import Link from 'next/link';
-import {
-    AppBar,
-    Toolbar,
-    Button,
-    Container,
-    Box,
-    Typography,
-    Stack,
-    Paper,
-    TextField,
-    Alert,
-} from '@mui/material';
+import {AppBar, Box, Button, Container, Stack, Toolbar, Typography,} from '@mui/material';
 
 export default function Home() {
-    // Inquiry form state
-    const [name, setName] = useState('');
-    const [email, setEmail] = useState('');
-    const [message, setMessage] = useState('');
-    const [submitting, setSubmitting] = useState(false);
-    const [result, setResult] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-
-    const onSubmitInquiry = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setResult(null);
-        if (!name.trim() || !email.trim() || !message.trim()) {
-            setResult({type: 'error', text: 'Please fill out name, email, and your message.'});
-            return;
-        }
-        setSubmitting(true);
-        try {
-            const resp = await fetch('/api/inquiry', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({name, email, message}),
-            });
-            if (!resp.ok) {
-                const data = await resp.json().catch(() => ({}));
-                throw new Error(data?.message || 'Failed to send inquiry');
-            }
-            setResult({type: 'success', text: 'Thanks! Your inquiry has been sent.'});
-            setName(''); setEmail(''); setMessage('');
-        } catch (err: any) {
-            setResult({type: 'error', text: err?.message || 'Something went wrong.'});
-        } finally {
-            setSubmitting(false);
-        }
-    };
 
     return (
         <Box>
@@ -92,10 +48,6 @@ export default function Home() {
                     </Stack>
                 </Container>
             </Box>
-
-            
-
-
 
             {/* Footer */}
             <Box component="footer" sx={{py: 4}}>

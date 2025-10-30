@@ -20,8 +20,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-    title: "Identity Suite",
-    description: "Identity & Access Portal",
+    title: "blessings",
+    description: "Shree Krupa Intranet",
     viewport: {
         width: 'device-width',
         initialScale: 1,
