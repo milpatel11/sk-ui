@@ -96,7 +96,7 @@ export const LoginForm: React.FC = () => {
                                    onChange={e => setPassword(e.target.value)} fullWidth size="small"
                                    error={!!fieldErrors.password} helperText={fieldErrors.password || ''}/>
                         {error && <div style={{color: 'red', fontSize: 12}}>{error}</div>}
-                        <Button type="submit" variant="contained" disabled={loading}>
+                        <Button type="submit" onClick={submit} variant="contained" disabled={loading}>
                             {loading ? 'Logging in...' : 'Continue'}
                         </Button>
                         <Typography variant="body2" color="text.secondary">No account? <Link component="button"
